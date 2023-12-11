@@ -1,8 +1,8 @@
-use tokio::net::{TcpListener, TcpStream};
-use std::{collections::HashMap, io, env::args};
-use bytes::{BytesMut, BufMut};
+use bytes::{BufMut, BytesMut};
+use log::{debug, error, info, trace, warn};
 use std::sync::{Arc, Mutex};
-use log::{info, trace, warn, error, debug};
+use std::{collections::HashMap, env::args, io};
+use tokio::net::{TcpListener, TcpStream};
 
 const LISTEN_ADDR: &str = "127.0.0.1";
 
@@ -11,7 +11,7 @@ struct RoutingEntry {
     destination: String,
     port: u16,
     hops: u8,
-    }
+}
 
 struct Routingtable {
     entries: Vec<RoutingEntry>,
@@ -50,6 +50,9 @@ fn help() {
 
 #[tokio::main]
 async fn main() {
+    let active_connections_map: HashMap<String, TcpStream> = HashMap::new();
+    let connections = Mutex::new(active_connections_map);
+
     simple_logger::SimpleLogger::new().env().init().unwrap();
 
     let port = match args().nth(1) {
@@ -67,8 +70,66 @@ async fn main() {
         handle_listen(listener).await;
     });
 
+    let stdin = io::stdin();
+    let mut line = String::new();
     loop {
-        
+        stdin.read_line(&mut line).unwrap();
+        let line = line.trim();
+        debug!("Command entered: {}", line);
+        if line.starts_with("exit") {
+            return;
+        } else if line.starts_with("help") {
+            info!(
+                "Available commands:
+                exit,
+                help,
+                connect <destination> <port>,
+                disconnect <destination>,
+                force_update
+            "
+            );
+        } else if line.starts_with("connect") {
+            let mut args = line.split_whitespace();
+            args.next();
+            let destination = match args.next() {
+                Some(destination) => destination,
+                None => {
+                    warn!("Missing destination");
+                    continue;
+                }
+            };
+            let port = match args.next() {
+                Some(port) => port,
+                None => {
+                    warn!("Missing port");
+                    continue;
+                }
+            };
+            info!("Connecting to {} on port {}", destination, port);
+            connections.lock().unwrap().insert(
+                destination.to_string(),
+                TcpStream::connect(format!("{}:{}", destination, port))
+                    .await
+                    .unwrap(),
+            );
+        } else if line.starts_with("disconnect") {
+            let mut args = line.split_whitespace();
+            args.next();
+            let destination = match args.next() {
+                Some(destination) => destination,
+                None => {
+                    warn!("Missing destination");
+                    continue;
+                }
+            };
+            info!("Disconnecting from {}", destination);
+            // @TODO: Disconnect from destination
+        } else if line.starts_with("force_update") {
+            info!("Forcing update");
+            // @TODO: Force update
+        } else {
+            warn!("Unknown command: {}", line);
+        }
     }
 }
 
