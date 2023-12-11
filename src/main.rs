@@ -1,9 +1,10 @@
 use tokio::net::{TcpListener, TcpStream};
-use std::{collections::HashMap, io};
+use std::{collections::HashMap, io, env::args};
 use bytes::{BytesMut, BufMut};
 use std::sync::{Arc, Mutex};
+use log::{info, trace, warn, error, debug};
 
-const LISTEN_ADDR: &str = "127.0.0.1:12345";
+const LISTEN_ADDR: &str = "127.0.0.1";
 
 struct RoutingEntry {
     info_source: String,
@@ -43,20 +44,47 @@ impl Routingtable {
     }
 }
 
+fn help() {
+    warn!("Usage: ./routingtable <port>");
+}
+
 #[tokio::main]
 async fn main() {
-    let listener = TcpListener::bind(LISTEN_ADDR).await.unwrap();
+    simple_logger::SimpleLogger::new().env().init().unwrap();
+
+    let port = match args().nth(1) {
+        Some(port) => port,
+        None => {
+            help();
+            return;
+        }
+    };
+    let addr = format!("{}:{}", LISTEN_ADDR, &port);
+    let listener = TcpListener::bind(&addr).await.unwrap();
+
+    info!("Listening on: {}", &addr);
+    tokio::spawn(async move {
+        handle_listen(listener).await;
+    });
+
+    loop {
+        
+    }
+}
+
+async fn handle_listen(listener: TcpListener) {
+    info!("Listening for new connections!");
 
     loop {
         match listener.accept().await {
             Ok((socket, addr)) => {
-                println!("New client connection {:?}", addr);
+                info!("New client connection {:?}", addr);
                 tokio::spawn(async move {
                     process(socket).await;
                 });
             }
             Err(e) => {
-                println!("Client connection failed = {:?}", e);
+                warn!("Client connection failed = {:?}", e);
             }
         }
     }
@@ -73,8 +101,8 @@ async fn process(socket: TcpStream) {
                 if n == 0 {
                     return;
                 }
-                println!("Received {} bytes", n);
-                println!("Received: {:?}", msg);
+                debug!("Received {} bytes", n);
+                debug!("Received: {:?}", msg);
                 msg.clear();
             }
             Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
