@@ -4,57 +4,31 @@ use std::sync::{Arc, Mutex};
 use std::{collections::HashMap, env::args, io};
 use tokio::net::{TcpListener, TcpStream};
 
+mod header;
+mod routing;
+
+use header::BaseHeader;
+use routing::{RoutingEntry, Routingtable};
+
 const LISTEN_ADDR: &str = "127.0.0.1";
 
-struct RoutingEntry {
-    info_source: String,
-    destination: String,
-    port: u16,
-    hops: u8,
-}
-
-struct Routingtable {
-    entries: Vec<RoutingEntry>,
-}
-
-impl Routingtable {
-    fn new() -> Routingtable {
-        Routingtable {
-            entries: Vec::new(),
-        }
-    }
-
-    /**
-     * Adds a new entry to the routing table
-     */
-    fn add_entry(&mut self, entry: RoutingEntry) {
-        self.entries.push(entry);
-    }
-
-    /**
-     * Returns the entry with the given destination
-     */
-    fn get_entry(&self, destination: String) -> Option<&RoutingEntry> {
-        for entry in &self.entries {
-            if entry.destination == destination {
-                return Some(entry);
-            }
-        }
-        None
-    }
-}
-
 fn help() {
-    warn!("Usage: ./routingtable <port>");
+    warn!("Usage: ./routingtable <port> <name (max 3 chars)>");
 }
 
 #[tokio::main]
 async fn main() {
+    // Create connections map and wrap it in a Mutex
     let active_connections_map: HashMap<String, TcpStream> = HashMap::new();
     let connections = Mutex::new(active_connections_map);
 
+    // Create routing table and wrap it in an Arc<Mutex>
+    let routingtable = Arc::new(Mutex::new(Routingtable::new()));
+
+    // Init logger
     simple_logger::SimpleLogger::new().env().init().unwrap();
 
+    // Parse Args
     let port = match args().nth(1) {
         Some(port) => port,
         None => {
@@ -62,12 +36,40 @@ async fn main() {
             return;
         }
     };
+    let name = match args().nth(2) {
+        Some(mut name) => {
+            if name.len() > 3 {
+                warn!("Name is too long, truncating to 3 characters");
+                name.truncate(3);
+                name
+            } else {
+                name
+            }
+        },
+        None => {
+            help();
+            return;
+        }
+    };
+
+    // Create listener
     let addr = format!("{}:{}", LISTEN_ADDR, &port);
     let listener = TcpListener::bind(&addr).await.unwrap();
 
+    // Create routing entry for self
+    let routing_entry = RoutingEntry::new(
+        name.clone(),
+        name.clone(),
+        LISTEN_ADDR.to_string(),
+        port.parse::<u16>().unwrap(),
+        1, // Self = 1 hop away
+    );
+    routingtable.lock().unwrap().add_entry(routing_entry);
+
+    // Start listening
     info!("Listening on: {}", &addr);
     tokio::spawn(async move {
-        handle_listen(listener).await;
+        handle_listen(listener, routingtable).await;
     });
 
     let stdin = io::stdin();
@@ -133,15 +135,16 @@ async fn main() {
     }
 }
 
-async fn handle_listen(listener: TcpListener) {
+async fn handle_listen(listener: TcpListener, routingtable: Arc<Mutex<Routingtable>>) {
     info!("Listening for new connections!");
 
     loop {
         match listener.accept().await {
             Ok((socket, addr)) => {
                 info!("New client connection {:?}", addr);
+                let routingtable = routingtable.clone();
                 tokio::spawn(async move {
-                    process(socket).await;
+                    process(socket, routingtable).await;
                 });
             }
             Err(e) => {
@@ -151,7 +154,7 @@ async fn handle_listen(listener: TcpListener) {
     }
 }
 
-async fn process(socket: TcpStream) {
+async fn process(socket: TcpStream, routingtable: Arc<Mutex<Routingtable>>) {
     let mut msg = BytesMut::with_capacity(1024);
 
     loop {
