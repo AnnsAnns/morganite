@@ -1,26 +1,35 @@
-use bytes::{BufMut, BytesMut};
-use log::{debug, error, info, trace, warn};
-use tokio::io::{AsyncWriteExt, AsyncReadExt};
-use std::sync::{Arc, Mutex};
-use std::{collections::HashMap, env::args, io};
-use tokio::net::{TcpListener, TcpStream};
 
+use log::{info};
+use tokio::io::AsyncWriteExt;
+
+use std::io::Write;
+use std::net::TcpStream;
+use std::sync::Arc;
+use tokio::sync::Mutex;
+use std::{collections::HashMap};
+
+
+use crate::header::BaseHeader;
 use crate::routing::{Routingtable, RoutingEntry};
 use crate::{RoutingTableType, ConnectionsTableType};
 
 
 pub struct Morganite {
-    connections: ConnectionsTableType,
     routingtable: RoutingTableType,
     own_name: String,
     own_port: String,
     own_addr: String,
 }
 
+impl Default for Morganite {
+    fn default() -> Self {
+        Morganite::new("ans".to_string(), "12345".to_string(), "127.0.0.1".to_string())
+    }
+}
+
 impl Morganite {
-    pub async fn new(own_name: String, own_port: String, own_addr: String) -> Morganite {
+    pub fn new(own_name: String, own_port: String, own_addr: String) -> Morganite {
         Morganite {
-            connections: Arc::new(Mutex::new(HashMap::new())),
             routingtable: Arc::new(Mutex::new(Routingtable::new())),
             own_name,
             own_port,
@@ -28,15 +37,15 @@ impl Morganite {
         }
     }
 
-    pub fn print_routingtable(&self) {
-        let routingtable = self.routingtable.lock().unwrap();
-        info!("Routingtable: {}", routingtable);
+    pub async fn print_routingtable(&self) {
+        let routingtable = self.routingtable.lock();
+        info!("Routingtable: {}", routingtable.await);
     }
 
     /**
      * Adds the own name to the routing table
      */
-    pub fn add_self_to_routingtable(&mut self) {
+    pub async fn add_self_to_routingtable(&mut self) {
         let entry = RoutingEntry::new(
             self.own_name.clone(),
             self.own_name.clone(),
@@ -45,13 +54,43 @@ impl Morganite {
             1,
         );
 
-        self.routingtable_add(entry);
+        self.routingtable_add(entry).await;
     }
 
     /**
      * Adds a new entry to the routing table
      */
-    pub fn routingtable_add(&mut self, entry: RoutingEntry) {
-        self.routingtable.lock().unwrap().add_entry(entry)
+    pub async fn routingtable_add(&mut self, entry: RoutingEntry) {
+        self.routingtable.lock().await.add_entry(entry)
+    }
+
+    pub async fn send_routingtable(&mut self, destination: String) {
+        let routingtable = self.routingtable.lock().await;
+        let routingtable_bytes = routingtable.to_bytes(destination.clone());
+        let entry = routingtable.get_entry(destination.clone()).unwrap();
+        let header = BaseHeader::new(
+            0, 
+            32,
+            destination.clone(),
+            self.own_name.clone(),
+            entry.hops,
+        ).to_bytes();
+
+        let mut connection = TcpStream::connect(entry.get_address()).unwrap();
+        connection.write_all(&header).unwrap();
+        connection.write_all(&routingtable_bytes).unwrap();
+    }
+
+    pub async fn connect_new(&mut self, destination: String, port: String, target_name: String) {
+        let entry = RoutingEntry::new(
+            target_name.clone(),
+            destination.clone(),
+            self.own_addr.clone(),
+            port.parse::<u16>().unwrap(),
+            1,
+        );
+
+        self.routingtable_add(entry).await;
+        self.send_routingtable(destination.clone()).await;
     }
 }

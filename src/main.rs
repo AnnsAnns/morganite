@@ -1,10 +1,11 @@
-use bytes::{BufMut, BytesMut};
+
 use connection_handler::ConnectionHandler;
-use log::{debug, error, info, trace, warn};
+
 use morganite::Morganite;
-use tokio::io::{AsyncWriteExt, AsyncReadExt};
-use std::sync::{Arc, Mutex};
-use std::{collections::HashMap, env::args, io};
+
+use std::sync::Arc;
+use tokio::sync::Mutex;
+use std::{collections::HashMap};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::join;
 
@@ -15,8 +16,8 @@ mod arg_parsing;
 mod tui;
 mod morganite;
 
-use header::BaseHeader;
-use routing::{RoutingEntry, Routingtable};
+
+use routing::{Routingtable};
 use arg_parsing::{parse_name, parse_port};
 
 const LISTEN_ADDR: &str = "127.0.0.1";
@@ -30,15 +31,15 @@ async fn main() {
     simple_logger::SimpleLogger::new().env().init().unwrap();
     let port = parse_port();
 
-    let mut morganite = Arc::new(Mutex::new(Morganite::new(
+    let morganite = Arc::new(Mutex::new(Morganite::new(
         parse_name(), 
         port.to_string(), 
         LISTEN_ADDR.to_string(),
-    ).await));
+    )));
 
     let listener = TcpListener::bind(format!("{}:{}", LISTEN_ADDR, port)).await.unwrap();
 
-    let mut connection_handler = ConnectionHandler::new(
+    let connection_handler = ConnectionHandler::new(
         morganite.clone(),
         listener
     );
@@ -52,14 +53,14 @@ async fn main() {
     
     // Spawn tui
     let tuithread = tokio::spawn(async move {
-        tui.handle_console();
+        tui.handle_console().await;
     });
 
     // Add self to routing table
-    morganite.lock().unwrap().add_self_to_routingtable();
+    morganite.lock().await.add_self_to_routingtable().await;
 
     // Print routing table
-    morganite.lock().unwrap().print_routingtable();
+    morganite.lock().await.print_routingtable().await;
 
     // Wait for exit
     join!(connectionthread, tuithread).0.unwrap();

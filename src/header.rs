@@ -1,5 +1,5 @@
 use bytes::{BufMut, BytesMut};
-use log::{debug, error, info, trace, warn};
+use log::{warn};
 
 /**
  * The BaseHeader struct

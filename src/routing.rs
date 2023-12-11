@@ -1,15 +1,15 @@
 use std::fmt::{Formatter, self, Display};
 
 use bytes::{BufMut, BytesMut};
-use log::{debug, error, info, trace, warn};
-use crate::{Morganite};
+use log::{debug, warn};
+
 
 pub struct RoutingEntry {
-    info_source: String,
-    destination: String,
-    ip: String,
-    port: u16,
-    hops: u8,
+    pub info_source: String,
+    pub destination: String,
+    pub ip: String,
+    pub port: u16,
+    pub hops: u8,
 }
 
 impl RoutingEntry {
@@ -33,6 +33,10 @@ impl RoutingEntry {
             port,
             hops,
         }
+    }
+
+    pub fn get_address(&self) -> String {
+        format!("{}:{}", self.ip, self.port)
     }
 
     pub fn to_bytes(&self) -> BytesMut {
@@ -74,12 +78,7 @@ impl Routingtable {
      * Returns the entry with the given destination
      */
     pub fn get_entry(&self, destination: String) -> Option<&RoutingEntry> {
-        for entry in &self.entries {
-            if entry.destination == destination {
-                return Some(entry);
-            }
-        }
-        None
+        self.entries.iter().find(|&entry| entry.destination == destination)
     }
 
     pub fn total_entries(&self, poise: String) -> usize {
@@ -108,9 +107,9 @@ impl Routingtable {
 
 impl Display for Routingtable {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "Routingtable:\n")?;
+        writeln!(f, "Routingtable:")?;
         for entry in &self.entries {
-            write!(f, "{}\n", entry)?;
+            writeln!(f, "{}", entry)?;
         }
 
         Ok(())

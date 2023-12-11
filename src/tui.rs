@@ -1,8 +1,10 @@
-use std::{io, sync::{Mutex, Arc}};
+use std::io;
+use std::sync::Arc;
+use tokio::sync::Mutex;
 
 use crate::Morganite;
 
-use log::{debug, error, info, trace, warn};
+use log::{debug, info, warn};
 
 pub struct Tui {
     morganite: Arc<Mutex<Morganite>>,
@@ -13,7 +15,7 @@ impl Tui {
         Tui { morganite }
     }
 
-    pub fn handle_console(&self) {
+    pub async fn handle_console(&self) {
         let stdin = io::stdin();
         let mut line = String::new();
         loop {
@@ -36,27 +38,34 @@ impl Tui {
             } else if line.starts_with("connect") {
                 let mut args = line.split_whitespace();
                 args.next();
-                let destination = match args.next() {
+                let _destination = match args.next() {
                     Some(destination) => destination,
                     None => {
                         warn!("Missing destination");
                         continue;
                     }
                 };
-                let port = match args.next() {
+                let _port = match args.next() {
                     Some(port) => port,
                     None => {
                         warn!("Missing port");
                         continue;
                     }
                 };
-                let target_name = match args.next() {
+                let _target_name = match args.next() {
                     Some(name) => name,
                     None => {
                         warn!("Missing name");
                         continue;
                     }
                 };
+
+                info!("Connecting to {} on port {}", _destination, _port);
+                let x = self.morganite.lock().await.connect_new(
+                    _destination.to_string(),
+                    _port.to_string(),
+                    _target_name.to_string(),
+                ).await;
             } else if line.starts_with("disconnect") {
                 let mut args = line.split_whitespace();
                 args.next();
@@ -69,7 +78,7 @@ impl Tui {
                 };
                 info!("Disconnecting from {}", destination);
             } else if line.starts_with("show_routingtable") {
-                self.morganite.lock().unwrap().print_routingtable();
+                self.morganite.lock().await.print_routingtable().await;
             } else if line.starts_with("force_update") {
                 info!("Forcing update");
             } else {
