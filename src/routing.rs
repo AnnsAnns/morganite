@@ -47,6 +47,21 @@ impl RoutingEntry {
         bytes.put_u8(self.hops);
         bytes
     }
+
+    pub fn from_bytes(bytes: BytesMut, ip: String) -> RoutingEntry {
+        let info_source = String::from_utf8(bytes[0..3].to_vec()).unwrap();
+        let destination = String::from_utf8(bytes[3..6].to_vec()).unwrap();
+        let port = u16::from_be_bytes([bytes[6], bytes[7]]);
+        let hops = bytes[8];
+
+        RoutingEntry {
+            info_source,
+            destination,
+            ip,
+            port,
+            hops,
+        }
+    }
 }
 
 impl Display for RoutingEntry {
@@ -102,6 +117,10 @@ impl Routingtable {
             bytes.put(entry.to_bytes());
         }
         bytes
+    }
+
+    pub fn get_entries(&self) -> &Vec<RoutingEntry> {
+        &self.entries
     }
 }
 

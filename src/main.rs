@@ -1,5 +1,5 @@
 
-use connection_handler::ConnectionHandler;
+use listener::Listener;
 
 use morganite::Morganite;
 
@@ -11,7 +11,7 @@ use tokio::join;
 
 mod header;
 mod routing;
-mod connection_handler;
+mod listener;
 mod arg_parsing;
 mod tui;
 mod morganite;
@@ -39,7 +39,7 @@ async fn main() {
 
     let listener = TcpListener::bind(format!("{}:{}", LISTEN_ADDR, port)).await.unwrap();
 
-    let connection_handler = ConnectionHandler::new(
+    let connection_handler = Listener::new(
         morganite.clone(),
         listener
     );

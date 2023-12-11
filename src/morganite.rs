@@ -1,4 +1,5 @@
 
+use bytes::{BytesMut, BufMut};
 use log::{info, debug, warn};
 use tokio::io::AsyncWriteExt;
 
@@ -9,7 +10,7 @@ use tokio::sync::Mutex;
 use std::{collections::HashMap};
 
 
-use crate::header::BaseHeader;
+use crate::header::{BaseHeader, BASE_HEADER_SIZE};
 use crate::routing::{Routingtable, RoutingEntry};
 use crate::{RoutingTableType, ConnectionsTableType};
 
@@ -82,9 +83,29 @@ impl Morganite {
             entry.hops,
         ).to_bytes();
 
+        debug!("Sending routingtable to {}", destination);
+        let mut msg = BytesMut::with_capacity(1024);
+        msg.put(header.clone());
+        msg.put(routingtable_bytes.clone());
+
         let mut connection = TcpStream::connect(entry.get_address()).unwrap();
-        connection.write_all(&header).unwrap();
-        connection.write_all(&routingtable_bytes).unwrap();
+        connection.write_all(&msg).unwrap();
+        connection.flush().unwrap();
+        debug!("Sent routingtable to {}", destination);
+    }
+
+    pub async fn update_routing_table(&mut self, bytes: BytesMut, ip: String) {
+        let header = BaseHeader::from_bytes(bytes.clone());
+        let routingtable_bytes = bytes[BASE_HEADER_SIZE..].to_vec();
+        let total_entries = routingtable_bytes[0];
+        let mut offset = 1;
+        for _ in 0..total_entries {
+            let entry_bytes = routingtable_bytes[offset..offset+9].to_vec();
+            let entry = RoutingEntry::from_bytes(BytesMut::from(entry_bytes.as_slice()),
+                                                 header.get_ip());
+            self.routingtable_add(entry).await;
+            offset += 9;
+        }
     }
 
     pub async fn connect_new(&mut self, destination: String, port: String, target_name: String) {

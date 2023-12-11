@@ -12,6 +12,8 @@ pub struct BaseHeader {
     hops: u8,
 }
 
+pub const BASE_HEADER_SIZE: usize = 72/8;
+
 impl BaseHeader {
     /**
      * Creates a new BaseHeader
@@ -44,12 +46,35 @@ impl BaseHeader {
      * Returns the header as a BytesMut
      */
     pub fn to_bytes(&self) -> BytesMut {
-        let mut bytes = BytesMut::with_capacity(72/8);
+        let mut bytes = BytesMut::with_capacity(BASE_HEADER_SIZE);
         bytes.put_u8(self.packet_type);
         bytes.put_u8(self.ttl);
         bytes.put(self.target.as_bytes());
         bytes.put(self.source.as_bytes());
         bytes.put_u8(self.hops);
         bytes
+    }
+
+    pub fn get_ip(&self) -> String {
+        self.source.clone()
+    }
+
+    /**
+     * Creates a new BaseHeader from a BytesMut
+     */
+    pub fn from_bytes(bytes: BytesMut) -> BaseHeader {
+        let packet_type = bytes[0];
+        let ttl = bytes[1];
+        let target = String::from_utf8(bytes[2..5].to_vec()).unwrap();
+        let source = String::from_utf8(bytes[5..8].to_vec()).unwrap();
+        let hops = bytes[8];
+
+        BaseHeader {
+            packet_type,
+            ttl,
+            target,
+            source,
+            hops,
+        }
     }
 }
