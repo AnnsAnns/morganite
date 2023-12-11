@@ -1,18 +1,17 @@
 
 use bytes::{BytesMut, BufMut};
 use log::{info, debug, warn};
-use tokio::io::AsyncWriteExt;
 
 use std::io::Write;
 use std::net::TcpStream;
 use std::sync::Arc;
 use tokio::sync::Mutex;
-use std::{collections::HashMap};
+
 
 
 use crate::header::{BaseHeader, BASE_HEADER_SIZE};
 use crate::routing::{Routingtable, RoutingEntry};
-use crate::{RoutingTableType, ConnectionsTableType};
+use crate::{RoutingTableType};
 
 
 pub struct Morganite {
@@ -94,7 +93,7 @@ impl Morganite {
         debug!("Sent routingtable to {}", destination);
     }
 
-    pub async fn update_routing_table(&mut self, bytes: BytesMut, ip: String) {
+    pub async fn update_routing_table(&mut self, bytes: BytesMut, _ip: String) {
         let header = BaseHeader::from_bytes(bytes.clone());
         let routingtable_bytes = bytes[BASE_HEADER_SIZE..].to_vec();
         let total_entries = routingtable_bytes[0];
