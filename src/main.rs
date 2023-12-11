@@ -1,16 +1,19 @@
 use bytes::{BufMut, BytesMut};
 use connection_handler::ConnectionHandler;
 use log::{debug, error, info, trace, warn};
+use morganite::Morganite;
 use tokio::io::{AsyncWriteExt, AsyncReadExt};
 use std::sync::{Arc, Mutex};
 use std::{collections::HashMap, env::args, io};
 use tokio::net::{TcpListener, TcpStream};
+use tokio::join;
 
 mod header;
 mod routing;
 mod connection_handler;
 mod arg_parsing;
 mod tui;
+mod morganite;
 
 use header::BaseHeader;
 use routing::{RoutingEntry, Routingtable};
@@ -20,31 +23,6 @@ const LISTEN_ADDR: &str = "127.0.0.1";
 
 pub type ConnectionsTableType = Arc<Mutex<HashMap<String, TcpStream>>>;
 pub type RoutingTableType = Arc<Mutex<Routingtable>>;
-
-pub struct Morganite {
-    connections: ConnectionsTableType,
-    routingtable: RoutingTableType,
-    own_name: String,
-    own_port: String,
-    own_addr: String,
-}
-
-impl Morganite {
-    pub async fn new(own_name: String, own_port: String, own_addr: String) -> Morganite {
-        Morganite {
-            connections: Arc::new(Mutex::new(HashMap::new())),
-            routingtable: Arc::new(Mutex::new(Routingtable::new())),
-            own_name,
-            own_port,
-            own_addr,
-        }
-    }
-
-    pub fn print_routingtable(&self) {
-        let routingtable = self.routingtable.lock().unwrap();
-        info!("Routingtable: {}", routingtable);
-    }
-}
 
 #[tokio::main]
 async fn main() {
@@ -66,5 +44,24 @@ async fn main() {
     );
 
     let tui = tui::Tui::new(morganite.clone());
+
+    // Spawn connection handler
+    let connectionthread = tokio::spawn(async move {
+        connection_handler.await.listen().await;
+    });
+    
+    // Spawn tui
+    let tuithread = tokio::spawn(async move {
+        tui.handle_console();
+    });
+
+    // Add self to routing table
+    morganite.lock().unwrap().add_self_to_routingtable();
+
+    // Print routing table
+    morganite.lock().unwrap().print_routingtable();
+
+    // Wait for exit
+    join!(connectionthread, tuithread).0.unwrap();
 }
 
