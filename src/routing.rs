@@ -91,6 +91,13 @@ impl Routingtable {
     }
 
     /**
+     * Removes all entries from the given source
+     */
+    pub fn clear_from(&mut self, poise: String) {
+        self.entries.retain(|entry| entry.info_source != poise);
+    }
+
+    /**
      * Adds a new entry to the routing table
      */
     pub fn add_entry(&mut self, entry: RoutingEntry) {
@@ -125,7 +132,7 @@ impl Routingtable {
         let mut bytes = BytesMut::with_capacity(1024);
         bytes.put_u8(self.total_entries(poise.clone()) as u8);
         for entry in &self.entries {
-            if entry.info_source == poise {
+            if entry.info_source == poise || entry.destination == poise {
                 continue;
             }
             bytes.put(entry.to_bytes());
