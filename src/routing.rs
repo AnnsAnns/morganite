@@ -2,6 +2,7 @@ use std::fmt::{Formatter, self, Display};
 
 use bytes::{BufMut, BytesMut};
 use log::{debug, error, info, trace, warn};
+use crate::{Morganite};
 
 pub struct RoutingEntry {
     info_source: String,
@@ -113,5 +114,29 @@ impl Display for Routingtable {
         }
 
         Ok(())
+    }
+}
+
+impl Morganite {
+    /**
+     * Adds the own name to the routing table
+     */
+    pub fn add_self_to_routingtable(&mut self) {
+        let entry = RoutingEntry::new(
+            self.own_name.clone(),
+            self.own_name.clone(),
+            self.own_addr.clone(),
+            self.own_port.clone().parse::<u16>().unwrap(),
+            1,
+        );
+
+        self.routingtable_add(entry);
+    }
+
+    /**
+     * Adds a new entry to the routing table
+     */
+    pub fn routingtable_add(&mut self, entry: RoutingEntry) {
+        self.routingtable.lock().unwrap().add_entry(entry)
     }
 }
