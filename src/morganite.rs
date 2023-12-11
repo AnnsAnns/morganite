@@ -1,5 +1,5 @@
 
-use log::{info};
+use log::{info, debug, warn};
 use tokio::io::AsyncWriteExt;
 
 use std::io::Write;
@@ -67,11 +67,17 @@ impl Morganite {
     pub async fn send_routingtable(&mut self, destination: String) {
         let routingtable = self.routingtable.lock().await;
         let routingtable_bytes = routingtable.to_bytes(destination.clone());
-        let entry = routingtable.get_entry(destination.clone()).unwrap();
+        let entry = match routingtable.get_entry(destination.clone()) {
+            Some(entry) => entry,
+            None => {
+                warn!("No entry found for {}", destination);
+                return;
+            }
+        };
         let header = BaseHeader::new(
             0, 
             32,
-            destination.clone(),
+            entry.destination.clone(),
             self.own_name.clone(),
             entry.hops,
         ).to_bytes();
@@ -82,15 +88,16 @@ impl Morganite {
     }
 
     pub async fn connect_new(&mut self, destination: String, port: String, target_name: String) {
+        debug!("Connecting to {} ({}) on port {}", target_name, destination, port);
         let entry = RoutingEntry::new(
+            self.own_name.clone(),
             target_name.clone(),
             destination.clone(),
-            self.own_addr.clone(),
             port.parse::<u16>().unwrap(),
             1,
         );
 
         self.routingtable_add(entry).await;
-        self.send_routingtable(destination.clone()).await;
+        self.send_routingtable(target_name.clone()).await;
     }
 }

@@ -16,12 +16,12 @@ impl Tui {
     }
 
     pub async fn handle_console(&self) {
-        let stdin = io::stdin();
-        let mut line = String::new();
         loop {
-            stdin.read_line(&mut line).unwrap();
+            let mut line = String::new();
+            io::stdin().read_line(&mut line).unwrap();
             let line = line.trim();
             debug!("Command entered: {}", line);
+
             if line.starts_with("exit") {
                 return;
             } else if line.starts_with("help") {
