@@ -44,7 +44,7 @@ impl BaseHeader {
      * Returns the header as a BytesMut
      */
     pub fn to_bytes(&self) -> BytesMut {
-        let mut bytes = BytesMut::with_capacity(1024);
+        let mut bytes = BytesMut::with_capacity(72/8);
         bytes.put_u8(self.packet_type);
         bytes.put_u8(self.ttl);
         bytes.put(self.target.as_bytes());

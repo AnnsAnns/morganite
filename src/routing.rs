@@ -1,3 +1,5 @@
+use std::fmt::{Formatter, self, Display};
+
 use bytes::{BufMut, BytesMut};
 use log::{debug, error, info, trace, warn};
 
@@ -30,6 +32,21 @@ impl RoutingEntry {
             port,
             hops,
         }
+    }
+
+    pub fn to_bytes(&self) -> BytesMut {
+        let mut bytes = BytesMut::with_capacity(1024);
+        bytes.put(self.info_source.as_bytes());
+        bytes.put(self.destination.as_bytes());
+        bytes.put_u16(self.port);
+        bytes.put_u8(self.hops);
+        bytes
+    }
+}
+
+impl Display for RoutingEntry {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "RoutingEntry {{ info_source: {}, destination: {}, ip: {}, port: {}, hops: {} }}", self.info_source, self.destination, self.ip, self.port, self.hops)
     }
 }
 
@@ -64,5 +81,37 @@ impl Routingtable {
         None
     }
 
+    pub fn total_entries(&self, poise: String) -> usize {
+        let mut total = 0;
+        for entry in &self.entries {
+            if entry.info_source == poise {
+                continue;
+            }
+            total += 1;
+        }
+        total
+    }
 
+    pub fn to_bytes(&self, poise: String) -> BytesMut {
+        let mut bytes = BytesMut::with_capacity(1024);
+        bytes.put_u8(self.total_entries(poise.clone()) as u8);
+        for entry in &self.entries {
+            if entry.info_source == poise {
+                continue;
+            }
+            bytes.put(entry.to_bytes());
+        }
+        bytes
+    }
+}
+
+impl Display for Routingtable {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "Routingtable:\n")?;
+        for entry in &self.entries {
+            write!(f, "{}\n", entry)?;
+        }
+
+        Ok(())
+    }
 }
