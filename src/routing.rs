@@ -1,8 +1,7 @@
-use std::fmt::{Formatter, self, Display};
+use std::fmt::{self, Display, Formatter};
 
 use bytes::{BufMut, BytesMut};
 use log::{debug, warn};
-
 
 pub struct RoutingEntry {
     pub info_source: String,
@@ -13,7 +12,13 @@ pub struct RoutingEntry {
 }
 
 impl RoutingEntry {
-    pub fn new(info_source: String, destination: String, ip: String, port: u16, hops: u8) -> RoutingEntry {
+    pub fn new(
+        info_source: String,
+        destination: String,
+        ip: String,
+        port: u16,
+        hops: u8,
+    ) -> RoutingEntry {
         let mut truncated_source = info_source.clone();
         if info_source.len() > 3 {
             warn!("Info source address is too long, truncating to 3 characters");
@@ -66,7 +71,11 @@ impl RoutingEntry {
 
 impl Display for RoutingEntry {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "RoutingEntry {{ info_source: {}, destination: {}, ip: {}, port: {}, hops: {} }}", self.info_source, self.destination, self.ip, self.port, self.hops)
+        write!(
+            f,
+            "RoutingEntry {{ info_source: {}, destination: {}, ip: {}, port: {}, hops: {} }}",
+            self.info_source, self.destination, self.ip, self.port, self.hops
+        )
     }
 }
 
@@ -85,7 +94,10 @@ impl Routingtable {
      * Adds a new entry to the routing table
      */
     pub fn add_entry(&mut self, entry: RoutingEntry) {
-        debug!("New \"{}\" from \"{}\" ({}:{})", &entry.destination, &entry.info_source, &entry.ip, &entry.port);
+        debug!(
+            "New \"{}\" from \"{}\" ({}:{})",
+            &entry.destination, &entry.info_source, &entry.ip, &entry.port
+        );
         self.entries.push(entry);
     }
 
@@ -93,7 +105,9 @@ impl Routingtable {
      * Returns the entry with the given destination
      */
     pub fn get_entry(&self, destination: String) -> Option<&RoutingEntry> {
-        self.entries.iter().find(|&entry| entry.destination == destination)
+        self.entries
+            .iter()
+            .find(|&entry| entry.destination == destination)
     }
 
     pub fn total_entries(&self, poise: String) -> usize {
@@ -132,5 +146,11 @@ impl Display for Routingtable {
         }
 
         Ok(())
+    }
+}
+
+impl Default for Routingtable {
+    fn default() -> Self {
+        Self::new()
     }
 }
