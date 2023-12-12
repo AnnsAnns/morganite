@@ -9,7 +9,7 @@ use tokio::sync::Mutex;
 use std::{collections::HashMap};
 use tokio::net::{TcpListener, TcpStream};
 
-mod header;
+mod packets;
 mod routing;
 mod listener;
 mod arg_parsing;
