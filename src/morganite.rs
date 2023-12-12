@@ -11,7 +11,7 @@ use crate::{
     packets::{
         header::{BaseHeader, PacketType, BASE_HEADER_SIZE},
         routing_entry::RoutingEntry,
-        Packet,
+        Packet, connection::ConnectionPacket,
     },
     routing::Routingtable,
     RoutingTableType,
@@ -137,6 +137,14 @@ impl Morganite {
     }
 
     /**
+     * Removes the entry with the given destination
+     * @param destination The destination to remove
+     */
+    pub async fn remove_entry(&mut self, destination: String) {
+        self.routingtable.lock().await.remove_entry(destination).await;
+    }
+
+    /**
      * Updates the routing table with the given bytes
      * @param bytes The bytes to update the routing table with
      * @param ip The ip of the sender
@@ -188,6 +196,51 @@ impl Morganite {
         );
 
         self.routingtable_add(entry).await;
+        self.send_connectionpacket(target_name.clone(), true).await;
         self.send_routingtable(target_name.clone()).await;
+
+        // The target will send a connection packet back to us
+        self.routingtable.lock().await.remove_entry(target_name.clone()).await;
+    }
+
+    pub async fn send_connectionpacket(&mut self, target: String, first: bool) {
+        let routingtable = self.routingtable.lock().await;
+        let entry = match routingtable.get_entry(target.clone()) {
+            Some(entry) => entry,
+            None => {
+                warn!("No entry found for {}", target);
+                return;
+            }
+        };
+        let mut connection = TcpStream::connect(entry.get_address()).unwrap();
+        let header = BaseHeader::new(
+            PacketType::Connection,
+            32,
+            entry.destination.clone(),
+            self.own_name.clone(),
+            entry.hops,
+        );
+        let connection_packet = 
+            ConnectionPacket::new(self.own_name.clone(), self.own_port.clone().parse::<u16>().unwrap(), first).to_bytes()
+        ;
+        let mut msg = BytesMut::with_capacity(1024);
+        msg.put(header.to_bytes());
+        msg.put(connection_packet.clone());
+        let packet = Packet::create_crc32(msg).await;
+        connection.write_all(&packet.to_bytes()).unwrap();
+        connection.flush().unwrap();
+        debug!("Sent connection packet to {}", target);
+    }
+
+    pub fn get_own_name(&self) -> String {
+        self.own_name.clone()
+    }
+
+    pub fn get_own_port(&self) -> String {
+        self.own_port.clone()
+    }
+
+    pub fn get_own_addr(&self) -> String {
+        self.own_addr.clone()
     }
 }

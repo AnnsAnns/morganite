@@ -15,7 +15,7 @@ impl Tui {
         Tui { morganite }
     }
 
-    pub async fn handle_console(&self) {
+    pub async fn handle_console(&mut self) {
         loop {
             let mut line = String::new();
             io::stdin().read_line(&mut line).unwrap();
@@ -29,48 +29,35 @@ impl Tui {
                     "Available commands:
                 exit,
                 help,
-                connect <IP> <port> <name>,
+                connect <IP> <port>,
                 disconnect <name>,
                 show_routingtable,
                 force_update
             "
                 );
+            } else if line.starts_with("dbg1") {
+                self.connect("127.0.0.1", "12345").await;
+            } else if line.starts_with("dbg2") {
+                self.connect("127.0.0.1", "12346").await;
             } else if line.starts_with("connect") {
                 let mut args = line.split_whitespace();
                 args.next();
-                let _destination = match args.next() {
+                let destination = match args.next() {
                     Some(destination) => destination,
                     None => {
                         warn!("Missing destination");
                         continue;
                     }
                 };
-                let _port = match args.next() {
+                let port = match args.next() {
                     Some(port) => port,
                     None => {
                         warn!("Missing port");
                         continue;
                     }
                 };
-                let _target_name = match args.next() {
-                    Some(name) => name,
-                    None => {
-                        warn!("Missing name");
-                        continue;
-                    }
-                };
 
-                info!("Connecting to {} on port {}", _destination, _port);
-                let _x = self
-                    .morganite
-                    .lock()
-                    .await
-                    .connect_new(
-                        _destination.to_string(),
-                        _port.to_string(),
-                        _target_name.to_string(),
-                    )
-                    .await;
+                self.connect(destination, port).await;
             } else if line.starts_with("disconnect") {
                 let mut args = line.split_whitespace();
                 args.next();
@@ -82,7 +69,7 @@ impl Tui {
                     }
                 };
                 info!("Disconnecting from {}", destination);
-            } else if line.starts_with("show_routingtable") {
+            } else if line.starts_with("show_routingtable") || line.starts_with("list_routingtable") {
                 self.morganite.lock().await.print_routingtable().await;
             } else if line.starts_with("force_update") {
                 info!("Forcing update");
@@ -90,5 +77,19 @@ impl Tui {
                 warn!("Unknown command: {}", line);
             }
         }
+    }
+
+    pub async fn connect(&mut self, destination: &str, port: &str) {
+        info!("Connecting to {} on port {}", destination, port);
+        self
+            .morganite
+            .lock()
+            .await
+            .connect_new(
+                destination.to_string(),
+                port.to_string(),
+                "ZZZ".to_string(),
+            )
+            .await;
     }
 }
