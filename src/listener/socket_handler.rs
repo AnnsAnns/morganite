@@ -1,4 +1,4 @@
-use crate::packets::connection::{ConnectionPacket, self};
+use crate::packets::connection::{ConnectionPacket};
 use crate::packets::header::{PacketType, BASE_HEADER_SIZE, BaseHeader};
 use crate::packets::Packet;
 use crate::Morganite;
@@ -19,7 +19,7 @@ pub struct SocketHandler {
 }
 
 impl SocketHandler {
-    pub fn new(morganite: Arc<Mutex<Morganite>>, mut socket: TcpStream) -> SocketHandler {
+    pub fn new(morganite: Arc<Mutex<Morganite>>, socket: TcpStream) -> SocketHandler {
         SocketHandler { morganite, socket, target_name: "".to_string() }
     }
 
@@ -35,7 +35,7 @@ impl SocketHandler {
                     debug!("Received {} bytes", n);
                     debug!("Received: {:?}", msg);
                     // get first byte to determine type of message
-                    let msg_type = match PacketType::from_u8(msg[0].clone()) {
+                    let msg_type = match PacketType::from_u8(msg[0]) {
                         Some(msg_type) => msg_type,
                         None => {
                             error!("Unknown message type: {}", msg[0]);
@@ -86,7 +86,7 @@ impl SocketHandler {
                     );
                     self.socket.shutdown().await.unwrap();
                     // Remove entry from routing table
-                    if self.target_name != "" {
+                    if !self.target_name.is_empty() {
                         self.morganite.lock().await.remove_entry(self.target_name.clone()).await;
                     }
                     return;
@@ -109,9 +109,9 @@ impl SocketHandler {
         self.morganite.lock().await.remove_entry(connection_packet.name.clone()).await;
 
         let peer_addr = self.socket.peer_addr().unwrap().clone().to_string();
-        let full_addr = peer_addr.split(":").collect::<Vec<&str>>();
-        let ip = full_addr.get(0).unwrap().to_string();
-        let port = full_addr.get(1).unwrap().parse::<u16>().unwrap();
+        let full_addr = peer_addr.split(':').collect::<Vec<&str>>();
+        let ip = full_addr.first().unwrap().to_string();
+        let _port = full_addr.get(1).unwrap().parse::<u16>().unwrap();
         self.target_name = connection_packet.name.clone();
 
         debug!("Adding routing entry for {}", connection_packet.name);

@@ -27,7 +27,7 @@ impl Listener {
 
         loop {
             match self.listener.accept().await {
-                Ok((mut socket, addr)) => {
+                Ok((socket, addr)) => {
                     info!("New client connection {:?}", addr);
                     let mut handler = socket_handler::SocketHandler::new(self.morganite.clone(), socket);
                     tokio::spawn(async move {
