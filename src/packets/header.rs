@@ -18,7 +18,23 @@ pub struct BaseHeader {
 pub enum PacketType {
     Connection,
     Routing,
-    Data,
+    Message,
+}
+
+impl PacketType {
+    pub fn from_u8(value: u8) -> Option<PacketType> {
+        match PacketType::try_from(value) {
+            Ok(packet_type) => Some(packet_type),
+            Err(e) => {
+                error!("Error while parsing packet type: {:?}", e);
+                None
+            }
+        }
+    }
+
+    pub fn to_u8(&self) -> u8 {
+        self.clone().into()
+    }
 }
 
 pub const BASE_HEADER_SIZE: usize = 72/8;

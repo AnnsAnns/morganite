@@ -1,7 +1,8 @@
+use crate::packets::header::PacketType;
 use crate::{Morganite};
 
 use bytes::BytesMut;
-use log::{debug, warn};
+use log::{debug, warn, error};
 
 use std::sync::Arc;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -28,9 +29,20 @@ impl SocketHandler {
                 debug!("Received {} bytes", n);
                 debug!("Received: {:?}", msg);
                 // get first byte to determine type of message
-                let msg_type = msg[0];
+                let msg_type = match PacketType::from_u8(msg[0]) {
+                    Some(msg_type) => msg_type,
+                    None => {
+                        error!("Unknown message type: {}", msg[0]);
+                        return;
+                    }
+                };
+
                 match msg_type {
-                    0 => {
+                    PacketType::Connection => {
+                        // Connection message
+                        //@TODO
+                    }
+                    PacketType::Routing => {
                         // Routing message
                         self.morganite
                             .lock()
@@ -41,12 +53,12 @@ impl SocketHandler {
                             )
                             .await;
                     }
-                    1 => {
+                    PacketType::Message => {
                         // Data message
                         //@TODO
                     }
                     _ => {
-                        warn!("Unknown message type: {}", msg_type);
+                        warn!("Unknown message type: {:#?}", msg_type);
                     }
                 }
             }
