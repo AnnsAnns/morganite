@@ -9,7 +9,7 @@ use std::sync::Arc;
 use tokio::sync::Mutex;
 
 
-use crate::{RoutingTableType, routing::Routingtable, packets::{routing_entry::RoutingEntry, header::{BaseHeader, BASE_HEADER_SIZE}}};
+use crate::{RoutingTableType, routing::Routingtable, packets::{routing_entry::RoutingEntry, header::{BaseHeader, BASE_HEADER_SIZE, PacketType}}};
 
 
 pub struct Morganite {
@@ -100,7 +100,7 @@ impl Morganite {
             }
         };
         let header = BaseHeader::new(
-            0, 
+            PacketType::Routing, 
             32,
             entry.destination.clone(),
             self.own_name.clone(),
@@ -144,7 +144,13 @@ impl Morganite {
      * @param ip The ip of the sender
      */
     pub async fn update_routing_table(&mut self, bytes: BytesMut, _ip: String) {
-        let header = BaseHeader::from_bytes(bytes.clone());
+        let header = match BaseHeader::from_bytes(bytes.clone()) {
+            Some(header) => header,
+            None => {
+                warn!("Invalid header");
+                return;
+            }
+        };
         self.routingtable.lock().await.clear_from(header.get_ip()); // clear all entries from the source
         let routingtable_bytes = bytes[BASE_HEADER_SIZE..].to_vec();
         let total_entries = routingtable_bytes[0];

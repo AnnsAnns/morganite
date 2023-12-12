@@ -12,3 +12,4 @@ bytes = { version = "1.5.0", features = ["serde"] }
 log = "0.4.20"
 simple_logger = "4.3.0"
 crc32fast = "1.3.2"
+num_enum = "0.7.1"
