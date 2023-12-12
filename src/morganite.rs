@@ -1,6 +1,5 @@
-
-use bytes::{BytesMut, BufMut};
-use log::{info, debug, warn};
+use bytes::{BufMut, BytesMut};
+use log::{debug, info, warn};
 
 use std::collections::HashSet;
 use std::io::Write;
@@ -8,9 +7,15 @@ use std::net::TcpStream;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
-
-use crate::{RoutingTableType, routing::Routingtable, packets::{routing_entry::RoutingEntry, header::{BaseHeader, BASE_HEADER_SIZE, PacketType}}};
-
+use crate::{
+    packets::{
+        header::{BaseHeader, PacketType, BASE_HEADER_SIZE},
+        routing_entry::RoutingEntry,
+        Packet,
+    },
+    routing::Routingtable,
+    RoutingTableType,
+};
 
 pub struct Morganite {
     routingtable: RoutingTableType,
@@ -21,7 +26,11 @@ pub struct Morganite {
 
 impl Default for Morganite {
     fn default() -> Self {
-        Morganite::new("ans".to_string(), "12345".to_string(), "127.0.0.1".to_string())
+        Morganite::new(
+            "ans".to_string(),
+            "12345".to_string(),
+            "127.0.0.1".to_string(),
+        )
     }
 }
 
@@ -73,7 +82,7 @@ impl Morganite {
         let mut direct_sources: HashSet<String> = HashSet::new();
         for sources in self.routingtable.lock().await.get_entries() {
             direct_sources.insert(sources.info_source.clone());
-        }   
+        }
 
         for entry in direct_sources {
             self.send_routingtable(entry.clone()).await;
@@ -100,12 +109,13 @@ impl Morganite {
             }
         };
         let header = BaseHeader::new(
-            PacketType::Routing, 
+            PacketType::Routing,
             32,
             entry.destination.clone(),
             self.own_name.clone(),
             entry.hops,
-        ).to_bytes();
+        )
+        .to_bytes();
 
         let routingtable_bytes = routingtable.to_bytes(entry.ip.clone());
 
@@ -113,29 +123,17 @@ impl Morganite {
         let mut msg = BytesMut::with_capacity(1024);
         msg.put(header.clone());
         msg.put(routingtable_bytes.clone());
+        let packet = Packet::create_crc32(msg).await;
+
+        if !packet.verify_self().await {
+            warn!("Invalid checksum was generated (Something is seriously wrong lol)");
+            return;
+        }
 
         let mut connection = TcpStream::connect(entry.get_address()).unwrap();
-        connection.write_all(&msg).unwrap();
+        connection.write_all(&packet.to_bytes()).unwrap();
         connection.flush().unwrap();
         debug!("Sent routingtable to {}", destination);
-    }
-
-    /**
-     * Creates a new CRC32 checksum from the given bytes
-     */
-    pub async fn create_crc32(&mut self, bytes: BytesMut) -> u32 {
-        let mut crc32 = crc32fast::Hasher::new();
-        crc32.update(&bytes);
-        crc32.finalize()
-    }
-
-    /**
-     * Verifies the given CRC32 checksum against the given bytes
-     */
-    pub async fn verify_crc32(&mut self, bytes: BytesMut, checksum: u32) -> bool {
-        let mut crc32 = crc32fast::Hasher::new();
-        crc32.update(&bytes);
-        crc32.finalize() == checksum
     }
 
     /**
@@ -156,10 +154,13 @@ impl Morganite {
         let total_entries = routingtable_bytes[0];
         let mut offset = 1;
         for _ in 0..total_entries {
-            let entry_bytes = routingtable_bytes[offset..offset+9].to_vec();
-            let entry = RoutingEntry::from_bytes(BytesMut::from(entry_bytes.as_slice()),
-                                                 header.get_ip());
-            if entry.info_source == self.own_name || entry.destination == self.own_name || entry.destination == entry.info_source {
+            let entry_bytes = routingtable_bytes[offset..offset + 9].to_vec();
+            let entry =
+                RoutingEntry::from_bytes(BytesMut::from(entry_bytes.as_slice()), header.get_ip());
+            if entry.info_source == self.own_name
+                || entry.destination == self.own_name
+                || entry.destination == entry.info_source
+            {
                 continue;
             }
             self.routingtable_add(entry).await;
@@ -174,7 +175,10 @@ impl Morganite {
      * @param target_name The name of the target
      */
     pub async fn connect_new(&mut self, destination: String, port: String, target_name: String) {
-        debug!("Connecting to {} ({}) on port {}", target_name, destination, port);
+        debug!(
+            "Connecting to {} ({}) on port {}",
+            target_name, destination, port
+        );
         let entry = RoutingEntry::new(
             self.own_name.clone(),
             target_name.clone(),

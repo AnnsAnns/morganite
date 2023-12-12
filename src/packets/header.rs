@@ -1,5 +1,5 @@
 use bytes::{BufMut, BytesMut};
-use log::{warn, error};
+use log::{error, warn};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 
 /**
@@ -37,14 +37,20 @@ impl PacketType {
     }
 }
 
-pub const BASE_HEADER_SIZE: usize = 72/8;
+pub const BASE_HEADER_SIZE: usize = 72 / 8;
 
 impl BaseHeader {
     /**
      * Creates a new BaseHeader
      * @warning Truncates the target and source addresses to 3 characters
      */
-    pub fn new(packet_type: PacketType, ttl: u8, target: String, source: String, hops: u8) -> BaseHeader {
+    pub fn new(
+        packet_type: PacketType,
+        ttl: u8,
+        target: String,
+        source: String,
+        hops: u8,
+    ) -> BaseHeader {
         let mut truncated_target = target.clone();
         let mut truncated_source = source.clone();
 
@@ -94,16 +100,13 @@ impl BaseHeader {
                 error!("Error while parsing packet type: {:?}", e);
                 return None;
             }
-        
         };
         let ttl = bytes[1];
         let target = String::from_utf8(bytes[2..5].to_vec()).unwrap();
         let source = String::from_utf8(bytes[5..8].to_vec()).unwrap();
         let hops = bytes[8];
 
-
-        Some(
-        BaseHeader {
+        Some(BaseHeader {
             packet_type,
             ttl,
             target,

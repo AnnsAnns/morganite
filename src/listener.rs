@@ -6,7 +6,7 @@ use log::{info, warn};
 
 use std::sync::Arc;
 
-use tokio::net::{TcpListener};
+use tokio::net::TcpListener;
 use tokio::sync::Mutex;
 
 pub struct Listener {

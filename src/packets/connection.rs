@@ -1,4 +1,4 @@
-use bytes::{BytesMut, BufMut};
+use bytes::{BufMut, BytesMut};
 
 pub struct ConnectionPacket {
     pub name: String,
@@ -20,5 +20,4 @@ impl ConnectionPacket {
 
         ConnectionPacket { name }
     }
-
 }

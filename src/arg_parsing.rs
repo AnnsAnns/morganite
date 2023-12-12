@@ -1,8 +1,6 @@
-use std::{process::exit, env::args};
+use std::{env::args, process::exit};
 
 use log::warn;
-
-
 
 pub fn help() {
     warn!("Usage: ./routingtable <port> <name (max 3 chars)>");
@@ -28,7 +26,7 @@ pub fn parse_name() -> String {
             } else {
                 name
             }
-        },
+        }
         None => {
             help();
             exit(1)
