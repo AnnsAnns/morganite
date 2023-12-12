@@ -61,11 +61,16 @@ impl Tui {
                 };
 
                 info!("Connecting to {} on port {}", _destination, _port);
-                let _x = self.morganite.lock().await.connect_new(
-                    _destination.to_string(),
-                    _port.to_string(),
-                    _target_name.to_string(),
-                ).await;
+                let _x = self
+                    .morganite
+                    .lock()
+                    .await
+                    .connect_new(
+                        _destination.to_string(),
+                        _port.to_string(),
+                        _target_name.to_string(),
+                    )
+                    .await;
             } else if line.starts_with("disconnect") {
                 let mut args = line.split_whitespace();
                 args.next();

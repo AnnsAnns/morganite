@@ -1,6 +1,9 @@
-use bytes::{BytesMut, BufMut};
+use bytes::BytesMut;
 
-use super::{header::{BaseHeader, BASE_HEADER_SIZE}, Packet};
+use super::{
+    header::{BaseHeader, BASE_HEADER_SIZE},
+    Packet,
+};
 
 pub struct BaseParsedPacket {
     pub header: BaseHeader,

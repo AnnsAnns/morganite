@@ -1,10 +1,9 @@
 use std::fmt::{self, Display, Formatter};
 
 use bytes::{BufMut, BytesMut};
-use log::{debug};
+use log::debug;
 
 use crate::packets::routing_entry::RoutingEntry;
-
 
 pub struct Routingtable {
     entries: Vec<RoutingEntry>,
