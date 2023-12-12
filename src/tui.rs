@@ -36,9 +36,9 @@ impl Tui {
             "
                 );
             } else if line.starts_with("dbg1") {
-                self.connect("127.0.0.1", "12345").await;
+                self.connect("127.0.0.1", "12345", "AAA").await;
             } else if line.starts_with("dbg2") {
-                self.connect("127.0.0.1", "12346").await;
+                self.connect("127.0.0.1", "12346", "BBB").await;
             } else if line.starts_with("connect") {
                 let mut args = line.split_whitespace();
                 args.next();
@@ -57,7 +57,7 @@ impl Tui {
                     }
                 };
 
-                self.connect(destination, port).await;
+                self.connect(destination, port, "ZZZ").await;
             } else if line.starts_with("disconnect") {
                 let mut args = line.split_whitespace();
                 args.next();
@@ -79,7 +79,7 @@ impl Tui {
         }
     }
 
-    pub async fn connect(&mut self, destination: &str, port: &str) {
+    pub async fn connect(&mut self, destination: &str, port: &str, target_name: &str) {
         info!("Connecting to {} on port {}", destination, port);
         self
             .morganite
@@ -88,7 +88,7 @@ impl Tui {
             .connect_new(
                 destination.to_string(),
                 port.to_string(),
-                "ZZZ".to_string(),
+                target_name.to_string(),
             )
             .await;
     }

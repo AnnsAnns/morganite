@@ -26,9 +26,9 @@ impl Routingtable {
     /**
      * Adds a new entry to the routing table
      */
-    pub fn add_entry(&mut self, entry: RoutingEntry) {
+    pub async fn add_entry(&mut self, entry: RoutingEntry) {
         debug!(
-            "New \"{}\" from \"{}\" ({}:{})",
+            "New Entry \"{}\" from \"{}\" ({}:{})",
             &entry.destination, &entry.info_source, &entry.ip, &entry.port
         );
         self.entries.push(entry);
