@@ -1,7 +1,7 @@
 use crate::packets::connection::{ConnectionPacket};
 use crate::packets::header::{PacketType, BASE_HEADER_SIZE, BaseHeader};
 use crate::packets::Packet;
-use crate::{Morganite, morganite};
+use crate::{Morganite};
 use crate::packets::routing_entry::RoutingEntry;
 
 use bytes::BytesMut;
