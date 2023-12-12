@@ -232,6 +232,49 @@ impl Morganite {
         debug!("Sent connection packet to {}", target);
     }
 
+    pub async fn get_port_of(&self, name: String) -> Option<u16> {
+        let routingtable = self.routingtable.lock().await;
+        let entry = match routingtable.get_entry(name.clone()) {
+            Some(entry) => entry,
+            None => {
+                warn!("No entry found for {}", name);
+                return None;
+            }
+        };
+        Some(entry.port)
+    }
+
+    pub async fn get_ip_of(&self, name: String) -> Option<String> {
+        let routingtable = self.routingtable.lock().await;
+        let entry = match routingtable.get_entry(name.clone()) {
+            Some(entry) => entry,
+            None => {
+                warn!("No entry found for {}", name);
+                return None;
+            }
+        };
+        Some(entry.ip.clone())
+    }
+
+    pub async fn get_addr_of(&self, name: String) -> Option<String> {
+        let ip = match self.get_ip_of(name.clone()).await {
+            Some(ip) => ip,
+            None => {
+                warn!("No entry found for {}", name);
+                return None;
+            }
+        };
+        let port = match self.get_port_of(name.clone()).await {
+            Some(port) => port,
+            None => {
+                warn!("No entry found for {}", name);
+                return None;
+            }
+        };
+
+        Some(format!("{}:{}", ip, port))
+    }
+
     pub fn get_own_name(&self) -> String {
         self.own_name.clone()
     }

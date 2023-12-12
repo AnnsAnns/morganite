@@ -52,6 +52,30 @@ impl SocketHandler {
                         debug!("Packet verification successful!");
                     }
 
+                    let header = BaseHeader::from_bytes(packet.bytes.clone()).unwrap();
+                    
+                    // Check if packet is for this node otherwise we forward it
+                    if header.get_target() != self.morganite.lock().await.get_own_name() {
+                        debug!("Packet target is not this node! Forwarding ...");
+
+                        // Forward packet
+                        let morganite = self.morganite.lock().await;
+                        let addr = match morganite.get_addr_of(header.get_target()).await {
+                            Some(addr) => addr,
+                            None => {
+                                error!("Could not find IP of target to forward packet to!");
+                                return;
+                            }
+                        };
+
+                        let mut stream = TcpStream::connect(addr.clone()).await.unwrap();
+                        stream.write_all(&packet.to_bytes()).await.unwrap();
+                        stream.flush().await.unwrap();
+                        debug!("Packet forwarded to {}", addr);
+                        stream.shutdown().await.unwrap();
+                        continue;
+                    }
+
                     match msg_type {
                         PacketType::Connection => {
                             // Connection message
