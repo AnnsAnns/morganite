@@ -1,11 +1,12 @@
 use crate::packets::connection::{ConnectionPacket};
 use crate::packets::header::{PacketType, BASE_HEADER_SIZE, BaseHeader};
 use crate::packets::Packet;
+use crate::packets::message::MessagePacket;
 use crate::{Morganite};
 use crate::packets::routing_entry::RoutingEntry;
 
 use bytes::BytesMut;
-use log::{debug, error};
+use log::{debug, error, info};
 
 use std::sync::Arc;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -30,6 +31,7 @@ impl SocketHandler {
             match self.socket.read_to_end(&mut msg).await {
                 Ok(n) => {
                     if n == 0 {
+                        info!("Connection to {} closed by client!", self.target_name);
                         return;
                     }
                     debug!("Received {} bytes", n);
@@ -79,7 +81,6 @@ impl SocketHandler {
                     match msg_type {
                         PacketType::Connection => {
                             // Connection message
-                            //@TODO
                             debug!("Connection message received");
 
                             self.connection_packet_handler(packet.bytes).await;
@@ -98,8 +99,8 @@ impl SocketHandler {
                         }
                         PacketType::Message => {
                             // Data message
-                            //@TODO
                             debug!("Data message received");
+                            self.message_packet_handler(packet.bytes).await;
                         }
                     }
                 }
@@ -153,6 +154,19 @@ impl SocketHandler {
             ))
             .await;
         debug!("Added routing entry for {}", connection_packet.name);
+    }
+
+    pub async fn message_packet_handler(&mut self, bytes: BytesMut) {
+        let base_header = BaseHeader::from_bytes(bytes.clone()).unwrap();
+        let message_packet = MessagePacket::from_bytes(
+            BytesMut::from( // Create BytesMut 
+                bytes[BASE_HEADER_SIZE..] // Get remaining bytes (without header)
+                .to_vec()
+                .as_slice() // Convert Vec<u8> to &[u8]
+            )
+        );
+
+        info!("MSG from {}:\n{}", base_header.get_source(), message_packet.get_message());
     }
 }
 

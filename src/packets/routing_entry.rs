@@ -3,6 +3,7 @@ use std::fmt::{self, Display, Formatter};
 use bytes::{BufMut, BytesMut};
 use log::warn;
 
+#[derive(Debug)]
 pub struct RoutingEntry {
     pub info_source: String,
     pub destination: String,

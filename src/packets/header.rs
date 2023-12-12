@@ -94,6 +94,10 @@ impl BaseHeader {
         self.target.clone()
     }
 
+    pub fn get_source(&self) -> String {
+        self.source.clone()
+    }
+
     /**
      * Creates a new BaseHeader from a BytesMut
      */
