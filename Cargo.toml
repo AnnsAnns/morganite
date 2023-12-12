@@ -11,3 +11,4 @@ serde = { version = "1.0.130", features = ["derive"] }
 bytes = { version = "1.5.0", features = ["serde"] }
 log = "0.4.20"
 simple_logger = "4.3.0"
+crc32fast = "1.3.2"
