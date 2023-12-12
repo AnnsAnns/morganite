@@ -80,15 +80,15 @@ impl Morganite {
     /**
      * Broadcasts the routing table to all direct sources
      */
-    pub async fn broadcast_routingtable(&mut self) {
+    pub async fn broadcast_routingtable(&self) {
+        let own_name = self.own_name.clone();
         //debug!("Broadcasting routingtable");
-        let mut direct_sources: HashSet<String> = HashSet::new();
-        for sources in self.routingtable.lock().await.get_entries() {
-            direct_sources.insert(sources.info_source.clone());
-        }
+        let direct_sources = self.routingtable.lock().await
+            .get_direct_sources(own_name)
+            .await;
 
         for entry in direct_sources {
-            self.send_routingtable(entry.clone()).await;
+            self.send_routingtable(entry).await;
         }
     }
 
@@ -96,7 +96,7 @@ impl Morganite {
      * Sends the routing table to the given destination
      * @param destination The destination to send the routing table to (name)
      */
-    pub async fn send_routingtable(&mut self, destination: String) {
+    pub async fn send_routingtable(&self, destination: String) {
         if destination == self.own_name {
             return;
         }
@@ -120,7 +120,12 @@ impl Morganite {
         )
         .to_bytes();
 
-        let routingtable_bytes = routingtable.to_bytes(entry.ip.clone());
+        let routingtable_bytes = routingtable.to_bytes(
+            entry.destination.clone(),
+            self.own_addr.clone(),
+            self.own_port.clone().parse::<u16>().unwrap(),
+            self.own_name.clone(),
+        );
 
         debug!("Sending routingtable to {}", destination);
         let mut msg = BytesMut::with_capacity(1024);
@@ -168,6 +173,7 @@ impl Morganite {
             let entry_bytes = routingtable_bytes[offset..offset + 9].to_vec();
             let entry =
                 RoutingEntry::from_bytes(BytesMut::from(entry_bytes.as_slice()), header.get_ip());
+            debug!("Adding entry: {:#?}", entry);
             if entry.info_source == self.own_name
                 || entry.destination == self.own_name
                 || entry.destination == entry.info_source
@@ -277,5 +283,31 @@ impl Morganite {
 
     pub fn get_own_name(&self) -> String {
         self.own_name.clone()
+    }
+
+    pub async fn send_message(&mut self, target: String, message: String) {
+        let routingtable = self.routingtable.lock().await;
+        let entry = match routingtable.get_entry(target.clone()) {
+            Some(entry) => entry,
+            None => {
+                warn!("No entry found for {}", target);
+                return;
+            }
+        };
+        let mut connection = TcpStream::connect(entry.get_address()).unwrap();
+        let header = BaseHeader::new(
+            PacketType::Message,
+            32,
+            entry.destination.clone(),
+            self.own_name.clone(),
+            entry.hops,
+        );
+        let mut msg = BytesMut::with_capacity(1024);
+        msg.put(header.to_bytes());
+        msg.put(message.as_bytes());
+        let packet = Packet::create_crc32(msg).await;
+        connection.write_all(&packet.to_bytes()).unwrap();
+        connection.flush().unwrap();
+        debug!("Sent message to {}", target);
     }
 }

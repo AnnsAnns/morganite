@@ -32,13 +32,16 @@ impl Tui {
                 connect <IP> <port>,
                 disconnect <name>,
                 show_routingtable,
-                force_update
+                force_update,
+                send <name> <message>,
             "
                 );
             } else if line.starts_with("dbg1") {
                 self.connect("127.0.0.1", "12345", "AAA").await;
             } else if line.starts_with("dbg2") {
                 self.connect("127.0.0.1", "12346", "BBB").await;
+            } else if line.starts_with("dbg3") {
+                self.connect("127.0.0.1", "12347", "CCC").await;
             } else if line.starts_with("connect") {
                 let mut args = line.split_whitespace();
                 args.next();
@@ -56,8 +59,15 @@ impl Tui {
                         continue;
                     }
                 };
+                let target_name = match args.next() {
+                    Some(target_name) => target_name,
+                    None => {
+                        warn!("Missing target name");
+                        continue;
+                    }
+                };
 
-                self.connect(destination, port, "ZZZ").await;
+                self.connect(destination, port, target_name).await;
             } else if line.starts_with("disconnect") {
                 let mut args = line.split_whitespace();
                 args.next();
@@ -73,6 +83,26 @@ impl Tui {
                 self.morganite.lock().await.print_routingtable().await;
             } else if line.starts_with("force_update") {
                 info!("Forcing update");
+                self.morganite.lock().await.broadcast_routingtable().await;
+            } else if line.starts_with("send") {
+                let mut args = line.split_whitespace();
+                args.next();
+                let destination = match args.next() {
+                    Some(destination) => destination,
+                    None => {
+                        warn!("Missing destination");
+                        continue;
+                    }
+                };
+
+                // Collect the rest of the line as message
+                let message = args.collect::<Vec<&str>>().join(" ");
+                info!("Sending message to {}: {}", destination, message);
+                self.morganite
+                    .lock()
+                    .await
+                    .send_message(destination.to_string(), message.to_string())
+                    .await;
             } else {
                 warn!("Unknown command: {}", line);
             }

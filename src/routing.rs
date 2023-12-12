@@ -34,6 +34,16 @@ impl Routingtable {
         self.entries.push(entry);
     }
 
+    pub async fn get_direct_sources(&self, of_target: String) -> Vec<String> {
+        let mut direct_sources: Vec<String> = Vec::new();
+        for entry in &self.entries {
+            if entry.info_source == of_target {
+                direct_sources.push(entry.destination.clone());
+            }
+        }
+        direct_sources
+    }
+
     /**
      * Returns the entry with the given destination
      */
@@ -60,14 +70,22 @@ impl Routingtable {
         total
     }
 
-    pub fn to_bytes(&self, poise: String) -> BytesMut {
+    pub fn to_bytes(&self, poise: String, own_ip: String, own_port: u16, own_name: String) -> BytesMut {
         let mut bytes = BytesMut::with_capacity(1024);
         bytes.put_u8(self.total_entries(poise.clone()) as u8);
         for entry in &self.entries {
             if entry.info_source == poise || entry.destination == poise {
                 continue;
             }
-            bytes.put(entry.to_bytes());
+            let translated_entry = RoutingEntry::new(
+                own_name.clone(),
+                entry.destination.clone(),
+                own_ip.clone(),
+                own_port.clone(),
+                entry.hops+1, // Since we are the next hop we have to increase the hops
+            );
+            debug!("Sending routing entry for {}", translated_entry.destination);
+            bytes.put(translated_entry.to_bytes());
         }
         bytes
     }

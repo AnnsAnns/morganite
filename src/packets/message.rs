@@ -18,6 +18,10 @@ impl MessagePacket {
         bytes
     }
 
+    pub fn get_message(&self) -> String {
+        self.msg.clone()
+    }
+
     pub fn from_bytes(bytes: BytesMut) -> MessagePacket {
         let msg = String::from_utf8(bytes[0..bytes.len()].to_vec()).unwrap();
 
