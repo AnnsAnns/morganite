@@ -3,6 +3,7 @@ use bytes::{BufMut, BytesMut};
 pub mod connection;
 pub mod header;
 pub mod routing_entry;
+pub mod message;
 
 pub struct Packet {
     pub bytes: BytesMut,
