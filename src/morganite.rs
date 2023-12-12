@@ -9,10 +9,7 @@ use std::sync::Arc;
 use tokio::sync::Mutex;
 
 
-
-use crate::header::{BaseHeader, BASE_HEADER_SIZE};
-use crate::routing::{Routingtable, RoutingEntry};
-use crate::{RoutingTableType};
+use crate::{RoutingTableType, routing::Routingtable, packets::{routing_entry::RoutingEntry, header::{BaseHeader, BASE_HEADER_SIZE}}};
 
 
 pub struct Morganite {
@@ -38,6 +35,9 @@ impl Morganite {
         }
     }
 
+    /**
+     * Prints the routing table to the console
+     */
     pub async fn print_routingtable(&self) {
         let routingtable = self.routingtable.lock();
         info!("Routingtable: {}", routingtable.await);
@@ -65,6 +65,9 @@ impl Morganite {
         self.routingtable.lock().await.add_entry(entry)
     }
 
+    /**
+     * Broadcasts the routing table to all direct sources
+     */
     pub async fn broadcast_routingtable(&mut self) {
         //debug!("Broadcasting routingtable");
         let mut direct_sources: HashSet<String> = HashSet::new();
@@ -77,6 +80,10 @@ impl Morganite {
         }
     }
 
+    /**
+     * Sends the routing table to the given destination
+     * @param destination The destination to send the routing table to (name)
+     */
     pub async fn send_routingtable(&mut self, destination: String) {
         if destination == self.own_name {
             return;
@@ -113,6 +120,29 @@ impl Morganite {
         debug!("Sent routingtable to {}", destination);
     }
 
+    /**
+     * Creates a new CRC32 checksum from the given bytes
+     */
+    pub async fn create_crc32(&mut self, bytes: BytesMut) -> u32 {
+        let mut crc32 = crc32fast::Hasher::new();
+        crc32.update(&bytes);
+        crc32.finalize()
+    }
+
+    /**
+     * Verifies the given CRC32 checksum against the given bytes
+     */
+    pub async fn verify_crc32(&mut self, bytes: BytesMut, checksum: u32) -> bool {
+        let mut crc32 = crc32fast::Hasher::new();
+        crc32.update(&bytes);
+        crc32.finalize() == checksum
+    }
+
+    /**
+     * Updates the routing table with the given bytes
+     * @param bytes The bytes to update the routing table with
+     * @param ip The ip of the sender
+     */
     pub async fn update_routing_table(&mut self, bytes: BytesMut, _ip: String) {
         let header = BaseHeader::from_bytes(bytes.clone());
         self.routingtable.lock().await.clear_from(header.get_ip()); // clear all entries from the source
@@ -131,6 +161,12 @@ impl Morganite {
         }
     }
 
+    /**
+     * Connects to the given destination
+     * @param destination The destination to connect to (IP)
+     * @param port The port to connect to
+     * @param target_name The name of the target
+     */
     pub async fn connect_new(&mut self, destination: String, port: String, target_name: String) {
         debug!("Connecting to {} ({}) on port {}", target_name, destination, port);
         let entry = RoutingEntry::new(
