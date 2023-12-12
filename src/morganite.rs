@@ -235,12 +235,4 @@ impl Morganite {
     pub fn get_own_name(&self) -> String {
         self.own_name.clone()
     }
-
-    pub fn get_own_port(&self) -> String {
-        self.own_port.clone()
-    }
-
-    pub fn get_own_addr(&self) -> String {
-        self.own_addr.clone()
-    }
 }
