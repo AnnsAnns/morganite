@@ -1,6 +1,5 @@
 use bytes::{BufMut, BytesMut};
 
-pub mod base_packet;
 pub mod connection;
 pub mod header;
 pub mod routing_entry;
