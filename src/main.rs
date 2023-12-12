@@ -42,7 +42,7 @@ async fn main() {
 
     let connection_handler = Listener::new(morganite.clone(), listener);
 
-    let tui = tui::Tui::new(morganite.clone());
+    let mut tui = tui::Tui::new(morganite.clone());
 
     // Spawn connection handler
     let _connectionthread = tokio::spawn(async move {

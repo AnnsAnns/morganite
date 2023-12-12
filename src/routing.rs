@@ -43,6 +43,12 @@ impl Routingtable {
             .find(|&entry| entry.destination == destination)
     }
 
+    pub async fn remove_entry(&mut self, destination: String) {
+        self.entries.retain(|entry| {
+            entry.destination != destination
+        });
+    }
+
     pub fn total_entries(&self, poise: String) -> usize {
         let mut total = 0;
         for entry in &self.entries {
