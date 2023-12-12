@@ -71,7 +71,10 @@ impl Morganite {
      * Adds a new entry to the routing table
      */
     pub async fn routingtable_add(&mut self, entry: RoutingEntry) {
-        self.routingtable.lock().await.add_entry(entry)
+        debug!(
+            "New Entry \"{}\" from \"{}\" ({}:{})",
+            &entry.destination, &entry.info_source, &entry.ip, &entry.port);
+        self.routingtable.lock().await.add_entry(entry).await;
     }
 
     /**
@@ -198,9 +201,6 @@ impl Morganite {
         self.routingtable_add(entry).await;
         self.send_connectionpacket(target_name.clone(), true).await;
         self.send_routingtable(target_name.clone()).await;
-
-        // The target will send a connection packet back to us
-        self.routingtable.lock().await.remove_entry(target_name.clone()).await;
     }
 
     pub async fn send_connectionpacket(&mut self, target: String, first: bool) {

@@ -1,7 +1,7 @@
 use crate::packets::connection::{ConnectionPacket};
 use crate::packets::header::{PacketType, BASE_HEADER_SIZE, BaseHeader};
 use crate::packets::Packet;
-use crate::Morganite;
+use crate::{Morganite, morganite};
 use crate::packets::routing_entry::RoutingEntry;
 
 use bytes::BytesMut;
@@ -105,8 +105,9 @@ impl SocketHandler {
             )
         );
 
+        let mut morganite = self.morganite.lock().await;
         // As this client directly connected to us we can ignore other routing entries to that client
-        self.morganite.lock().await.remove_entry(connection_packet.name.clone()).await;
+        morganite.remove_entry(connection_packet.name.clone()).await;
 
         let peer_addr = self.socket.peer_addr().unwrap().clone().to_string();
         let full_addr = peer_addr.split(':').collect::<Vec<&str>>();
@@ -116,11 +117,11 @@ impl SocketHandler {
 
         debug!("Adding routing entry for {}", connection_packet.name);
 
-        self.morganite
-            .lock()
-            .await
+        let own_name = morganite.get_own_name();
+
+        morganite
             .routingtable_add(RoutingEntry::new(
-                self.morganite.lock().await.get_own_name(),
+                own_name,
                 connection_packet.name.clone(),
                 ip,
                 connection_packet.port,
