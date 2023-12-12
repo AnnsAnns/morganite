@@ -1,7 +1,7 @@
 use std::fmt::{self, Display, Formatter};
 
 use bytes::{BufMut, BytesMut};
-use log::{debug, warn};
+use log::{warn};
 
 pub struct RoutingEntry {
     pub info_source: String,

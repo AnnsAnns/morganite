@@ -1,7 +1,7 @@
 use std::fmt::{self, Display, Formatter};
 
 use bytes::{BufMut, BytesMut};
-use log::{debug, warn};
+use log::{debug};
 
 use crate::packets::routing_entry::RoutingEntry;
 
