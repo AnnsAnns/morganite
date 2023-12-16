@@ -19,6 +19,14 @@ impl Packet {
     }
 
     pub fn from_bytes(mut bytes: Vec<u8>) -> Packet {
+        // Check if empty
+        if bytes.len() == 0 {
+            return Packet {
+                bytes: BytesMut::new(),
+                checksum: 0,
+            };
+        }
+
         let checksum_vec = bytes.split_off(bytes.len() - 4); // Split off last 32bit into checksum
         let bytes = BytesMut::from(bytes.as_slice()); // Convert rest of message into BytesMut
 
@@ -59,5 +67,28 @@ impl Packet {
      */
     pub async fn verify_self(&self) -> bool {
         Packet::verify_crc32(self.bytes.clone(), self.checksum).await
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_packet() {
+        let bytes = BytesMut::from("Hello World!".as_bytes());
+        let packet = Packet::from_bytes(bytes.clone().to_vec());
+        let bytes = packet.to_bytes();
+
+        assert_eq!(bytes, BytesMut::from("Hello World!".as_bytes()));
+    }
+
+    #[test]
+    fn test_packet_long() {
+        let bytes = BytesMut::from("Hello World! This is a very long message that should be able to be sent over the network. I hope this works!".as_bytes());
+        let packet = Packet::from_bytes(bytes.clone().to_vec());
+        let bytes = packet.to_bytes();
+
+        assert_eq!(bytes, BytesMut::from("Hello World! This is a very long message that should be able to be sent over the network. I hope this works!".as_bytes()));
     }
 }

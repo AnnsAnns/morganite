@@ -1,7 +1,7 @@
 use bytes::{BufMut, BytesMut};
 use log::{debug, info, warn};
 
-use std::collections::HashSet;
+
 use std::io::Write;
 use std::net::TcpStream;
 use std::sync::Arc;
@@ -121,11 +121,13 @@ impl Morganite {
         .to_bytes();
 
         let routingtable_bytes = routingtable.to_bytes(
-            entry.destination.clone(),
+            "".to_string(),
             self.own_addr.clone(),
             self.own_port.clone().parse::<u16>().unwrap(),
             self.own_name.clone(),
         );
+
+        debug!("Routingtable bytes: {:#?}", routingtable_bytes.clone());
 
         debug!("Sending routingtable to {}", destination);
         let mut msg = BytesMut::with_capacity(1024);
