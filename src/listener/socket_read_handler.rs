@@ -13,15 +13,15 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
 use tokio::sync::Mutex;
 
-pub struct SocketHandler {
+pub struct SocketReadHandler {
     morganite: Arc<Mutex<Morganite>>,
     socket: TcpStream,
     target_name: String,
 }
 
-impl SocketHandler {
-    pub fn new(morganite: Arc<Mutex<Morganite>>, socket: TcpStream) -> SocketHandler {
-        SocketHandler {
+impl SocketReadHandler {
+    pub fn new(morganite: Arc<Mutex<Morganite>>, socket: TcpStream) -> SocketReadHandler {
+        SocketReadHandler {
             morganite,
             socket,
             target_name: "".to_string(),
@@ -188,7 +188,7 @@ impl SocketHandler {
     }
 }
 
-impl Default for SocketHandler {
+impl Default for SocketReadHandler {
     fn default() -> Self {
         panic!("Default constructor not implemented");
     }

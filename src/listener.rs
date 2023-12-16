@@ -1,4 +1,5 @@
-pub mod socket_handler;
+pub mod socket_read_handler;
+pub mod socket_write_handler;
 
 use crate::Morganite;
 
@@ -30,7 +31,7 @@ impl Listener {
                 Ok((socket, addr)) => {
                     info!("New client connection {:?}", addr);
 
-                    let mut handler = socket_handler::SocketHandler::new(self.morganite.clone(), socket);
+                    let mut handler = socket_read_handler::SocketReadHandler::new(self.morganite.clone(), socket);
                     tokio::spawn(async move {
                         handler.process().await;
                     });
