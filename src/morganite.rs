@@ -131,6 +131,7 @@ impl Morganite {
         let mut msg = BytesMut::with_capacity(1024);
         msg.put(header.clone());
         msg.put(routingtable_bytes.clone());
+
         let packet = Packet::create_crc32(msg).await;
 
         if !packet.verify_self().await {
@@ -138,7 +139,14 @@ impl Morganite {
             return;
         }
 
-        let mut connection = TcpStream::connect(entry.get_address()).unwrap();
+        let mut connection = match TcpStream::connect(entry.get_address()) {
+            Ok(connection) => connection,
+            Err(e) => {
+                warn!("Could not connect to {}: {} - Removing from Routing Table", entry.get_address(), e);
+                self.routingtable.lock().await.remove_entry(destination.clone()).await;
+                return;
+            }
+        };
         connection.write_all(&packet.to_bytes()).unwrap();
         connection.flush().unwrap();
         debug!("Sent routingtable to {}", destination);
@@ -157,7 +165,8 @@ impl Morganite {
      * @param bytes The bytes to update the routing table with
      * @param ip The ip of the sender
      */
-    pub async fn update_routing_table(&mut self, bytes: BytesMut, _ip: String) {
+    pub async fn update_routing_table(&mut self, bytes: BytesMut, ip: String) {
+        debug!("Updating routing table with {}", ip);
         let header = match BaseHeader::from_bytes(bytes.clone()) {
             Some(header) => header,
             None => {
@@ -165,14 +174,14 @@ impl Morganite {
                 return;
             }
         };
-        self.routingtable.lock().await.clear_from(header.get_ip()); // clear all entries from the source
+        self.routingtable.lock().await.clear_from(header.get_source()); // clear all entries from the source
         let routingtable_bytes = bytes[BASE_HEADER_SIZE..].to_vec();
         let total_entries = routingtable_bytes[0];
         let mut offset = 1;
         for _ in 0..total_entries {
             let entry_bytes = routingtable_bytes[offset..offset + 9].to_vec();
             let entry =
-                RoutingEntry::from_bytes(BytesMut::from(entry_bytes.as_slice()), header.get_ip());
+                RoutingEntry::from_bytes(BytesMut::from(entry_bytes.as_slice()), ip.clone());
             debug!("Adding entry: {:#?}", entry);
             if entry.info_source == self.own_name
                 || entry.destination == self.own_name
