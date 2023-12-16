@@ -27,3 +27,36 @@ impl ConnectionPacket {
         ConnectionPacket { name, port, is_first }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_connection_packet() {
+        let name = String::from("ABC");
+        let port = 1234;
+        let is_first = true;
+        let packet = ConnectionPacket::new(name.clone(), port, is_first);
+        let bytes = packet.to_bytes();
+        let packet = ConnectionPacket::from_bytes(bytes);
+
+        assert_eq!(packet.name, name);
+        assert_eq!(packet.port, port);
+        assert_eq!(packet.is_first, is_first);
+    }
+
+    #[test]
+    fn test_connection_packet_long() {
+        let name = String::from("ABC");
+        let port = 1234;
+        let is_first = false;
+        let packet = ConnectionPacket::new(name.clone(), port, is_first);
+        let bytes = packet.to_bytes();
+        let packet = ConnectionPacket::from_bytes(bytes);
+
+        assert_eq!(packet.name, name);
+        assert_eq!(packet.port, port);
+        assert_eq!(packet.is_first, is_first);
+    }
+}

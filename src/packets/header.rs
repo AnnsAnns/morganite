@@ -123,3 +123,42 @@ impl BaseHeader {
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_base_header() {
+        let header = BaseHeader::new(
+            PacketType::Connection,
+            0,
+            String::from("ABC"),
+            String::from("DEF"),
+            0,
+        );
+        let bytes = header.to_bytes();
+        let header = BaseHeader::from_bytes(bytes).unwrap();
+
+        assert_eq!(header.get_ip(), String::from("DEF"));
+        assert_eq!(header.get_target(), String::from("ABC"));
+        assert_eq!(header.get_source(), String::from("DEF"));
+    }
+
+    #[test]
+    fn test_base_header_long() {
+        let header = BaseHeader::new(
+            PacketType::Connection,
+            0,
+            String::from("ABCDEF"),
+            String::from("DEFGHI"),
+            0,
+        );
+        let bytes = header.to_bytes();
+        let header = BaseHeader::from_bytes(bytes).unwrap();
+
+        assert_eq!(header.get_ip(), String::from("DEF"));
+        assert_eq!(header.get_target(), String::from("ABC"));
+        assert_eq!(header.get_source(), String::from("DEF"));
+    }
+}

@@ -70,24 +70,11 @@ impl Routingtable {
         total
     }
 
-    pub fn to_bytes(&self, poise: String, own_ip: String, own_port: u16, own_name: String) -> BytesMut {
+    pub fn to_bytes(&self, poise: String, _own_ip: String, _own_port: u16, _own_name: String) -> BytesMut {
         let mut bytes = BytesMut::with_capacity(1024);
         bytes.put_u8(self.total_entries(poise.clone()) as u8);
         for entry in &self.entries {
-            if entry.info_source == poise || entry.destination == poise {
-                continue;
-            }
-            let translated_entry = RoutingEntry::new(
-                own_name.clone(),
-                entry.destination.clone(),
-                own_ip.clone(),
-                own_port.clone(),
-                entry.hops+1, // Since we are the next hop we have to increase the hops
-            );
-            debug!("Sending routing entry for {}", translated_entry.destination);
-            debug!("IP: {}:{}", translated_entry.ip, translated_entry.port);
-            debug!("Hops: {}", translated_entry.hops);
-            bytes.put(translated_entry.to_bytes());
+            bytes.put(entry.to_bytes());
         }
         bytes
     }
@@ -113,3 +100,48 @@ impl Default for Routingtable {
         Self::new()
     }
 }
+
+// #[cfg(test)]
+// mod tests {
+//     use super::*;
+
+//     #[test]
+//     fn test_routingtable() {
+//         let mut routingtable = Routingtable::new();
+//         let entry = RoutingEntry::new(
+//             String::from("ABC"),
+//             String::from("DEF"),
+//             String::from("127.0.0.1"),
+//             1234,
+//             0,
+//         );
+//         routingtable.add_entry(entry);
+//         let entry = RoutingEntry::new(
+//             String::from("ABC"),
+//             String::from("GHI"),
+//             String::from("127.0.0.2"),
+//             1234,
+//             0,
+//         );
+
+//         routingtable.add_entry(entry).await;
+//         let entry = RoutingEntry::new(
+//             String::from("DEF"),
+//             String::from("GHI"),
+//             String::from("127.0.0.3"),
+//             1234,
+//             0,
+//         );
+
+//         assert_eq!(routingtable.get_entry(String::from("DEF")).unwrap().ip, String::from("127.0.0.1"));
+//         assert_eq!(routingtable.get_entry(String::from("GHI")).unwrap().ip, String::from("127.0.0.2"));
+//         assert_eq!(routingtable.get_entry(String::from("GHI")).unwrap().port, 1234);
+//         assert_eq!(routingtable.get_entry(String::from("GHI")).unwrap().hops, 0);
+//         assert_eq!(routingtable.get_entry(String::from("GHI")).unwrap().destination, String::from("GHI"));
+//         assert_eq!(routingtable.get_entry(String::from("GHI")).unwrap().info_source, String::from("ABC"));
+//         assert_eq!(routingtable.get_entry(String::from("GHI")).unwrap().to_string(), String::from("RoutingEntry { info_source: ABC, destination: GHI, ip: 127.0.0.1, port: 1234, hops: 0 }"));
+//         assert_eq!(routingtable.get_entry(String::from("GHI")).unwrap().to_bytes(), vec![65, 66, 67, 68, 69, 70, 4, 210, 0]);
+//         assert_eq!(routingtable.get_entry(String::from("GHI")).unwrap().to_bytes().len(), 9);
+
+//     }
+// }
