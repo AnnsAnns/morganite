@@ -85,6 +85,8 @@ impl Routingtable {
                 entry.hops+1, // Since we are the next hop we have to increase the hops
             );
             debug!("Sending routing entry for {}", translated_entry.destination);
+            debug!("IP: {}:{}", translated_entry.ip, translated_entry.port);
+            debug!("Hops: {}", translated_entry.hops);
             bytes.put(translated_entry.to_bytes());
         }
         bytes

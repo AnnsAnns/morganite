@@ -1,7 +1,7 @@
 use std::fmt::{self, Display, Formatter};
 
 use bytes::{BufMut, BytesMut};
-use log::warn;
+use log::{warn, debug};
 
 #[derive(Debug)]
 pub struct RoutingEntry {
@@ -59,6 +59,10 @@ impl RoutingEntry {
         let destination = String::from_utf8(bytes[3..6].to_vec()).unwrap();
         let port = u16::from_be_bytes([bytes[6], bytes[7]]);
         let hops = bytes[8];
+
+        debug!("Received routing entry for {}", destination);
+        debug!("IP: {}:{}", ip, port);
+        debug!("Hops: {}", hops);
 
         RoutingEntry {
             info_source,

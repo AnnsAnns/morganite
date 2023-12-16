@@ -1,9 +1,9 @@
-use crate::packets::connection::{ConnectionPacket};
-use crate::packets::header::{PacketType, BASE_HEADER_SIZE, BaseHeader};
-use crate::packets::Packet;
+use crate::packets::connection::ConnectionPacket;
+use crate::packets::header::{BaseHeader, PacketType, BASE_HEADER_SIZE};
 use crate::packets::message::MessagePacket;
-use crate::{Morganite};
 use crate::packets::routing_entry::RoutingEntry;
+use crate::packets::Packet;
+use crate::Morganite;
 
 use bytes::BytesMut;
 use log::{debug, error, info};
@@ -21,7 +21,11 @@ pub struct SocketHandler {
 
 impl SocketHandler {
     pub fn new(morganite: Arc<Mutex<Morganite>>, socket: TcpStream) -> SocketHandler {
-        SocketHandler { morganite, socket, target_name: "".to_string() }
+        SocketHandler {
+            morganite,
+            socket,
+            target_name: "".to_string(),
+        }
     }
 
     pub async fn process(&mut self) {
@@ -55,7 +59,7 @@ impl SocketHandler {
                     }
 
                     let header = BaseHeader::from_bytes(packet.bytes.clone()).unwrap();
-                    
+
                     // Check if packet is for this node otherwise we forward it
                     if header.get_target() != self.morganite.lock().await.get_own_name() {
                         debug!("Packet target is not this node! Forwarding ...");
@@ -93,7 +97,15 @@ impl SocketHandler {
                                 .await
                                 .update_routing_table(
                                     packet.bytes,
-                                    self.socket.peer_addr().unwrap().to_string(),
+                                    self.socket
+                                        .peer_addr()
+                                        .unwrap()
+                                        .to_string()
+                                        .split(':')
+                                        .collect::<Vec<&str>>()
+                                        .first()
+                                        .unwrap()
+                                        .to_string(), // Get the IP, I know this is ugly
                                 )
                                 .await;
                         }
@@ -112,7 +124,11 @@ impl SocketHandler {
                     self.socket.shutdown().await.unwrap();
                     // Remove entry from routing table
                     if !self.target_name.is_empty() {
-                        self.morganite.lock().await.remove_entry(self.target_name.clone()).await;
+                        self.morganite
+                            .lock()
+                            .await
+                            .remove_entry(self.target_name.clone())
+                            .await;
                     }
                     return;
                 }
@@ -122,13 +138,12 @@ impl SocketHandler {
 
     pub async fn connection_packet_handler(&mut self, bytes: BytesMut) {
         let _base_header = BaseHeader::from_bytes(bytes.clone()).unwrap();
-        let connection_packet = ConnectionPacket::from_bytes(
-            BytesMut::from( // Create BytesMut 
-                bytes[BASE_HEADER_SIZE..] // Get remaining bytes (without header)
+        let connection_packet = ConnectionPacket::from_bytes(BytesMut::from(
+            // Create BytesMut
+            bytes[BASE_HEADER_SIZE..] // Get remaining bytes (without header)
                 .to_vec()
-                .as_slice() // Convert Vec<u8> to &[u8]
-            )
-        );
+                .as_slice(), // Convert Vec<u8> to &[u8]
+        ));
 
         let mut morganite = self.morganite.lock().await;
         // As this client directly connected to us we can ignore other routing entries to that client
@@ -158,15 +173,18 @@ impl SocketHandler {
 
     pub async fn message_packet_handler(&mut self, bytes: BytesMut) {
         let base_header = BaseHeader::from_bytes(bytes.clone()).unwrap();
-        let message_packet = MessagePacket::from_bytes(
-            BytesMut::from( // Create BytesMut 
-                bytes[BASE_HEADER_SIZE..] // Get remaining bytes (without header)
+        let message_packet = MessagePacket::from_bytes(BytesMut::from(
+            // Create BytesMut
+            bytes[BASE_HEADER_SIZE..] // Get remaining bytes (without header)
                 .to_vec()
-                .as_slice() // Convert Vec<u8> to &[u8]
-            )
-        );
+                .as_slice(), // Convert Vec<u8> to &[u8]
+        ));
 
-        info!("MSG from {}:\n{}", base_header.get_source(), message_packet.get_message());
+        info!(
+            "MSG from {}:\n{}",
+            base_header.get_source(),
+            message_packet.get_message()
+        );
     }
 }
 
