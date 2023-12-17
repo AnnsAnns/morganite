@@ -3,6 +3,8 @@ use std::fmt::{self, Display, Formatter};
 use bytes::{BufMut, BytesMut};
 use log::{warn, debug};
 
+pub const TTL: u8 = 30;
+
 #[derive(Debug)]
 pub struct RoutingEntry {
     pub info_source: String,
@@ -10,6 +12,8 @@ pub struct RoutingEntry {
     pub ip: String,
     pub port: u16,
     pub hops: u8,
+    pub ttl: u8, // Time to live in seconds
+    pub dont_expire: bool,
 }
 
 impl RoutingEntry {
@@ -38,7 +42,17 @@ impl RoutingEntry {
             ip,
             port,
             hops,
+            ttl: TTL,
+            dont_expire: false,
         }
+    }
+
+    pub fn set_ttl(&mut self, ttl: u8) {
+        self.ttl = ttl;
+    }
+
+    pub fn set_dont_expire(&mut self, dont_expire: bool) {
+        self.dont_expire = dont_expire;
     }
 
     pub fn get_address(&self) -> String {
@@ -74,6 +88,8 @@ impl RoutingEntry {
             ip,
             port,
             hops,
+            ttl: TTL,
+            dont_expire: false,
         }
     }
 }
@@ -82,8 +98,8 @@ impl Display for RoutingEntry {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "RoutingEntry {{ info_source: {}, destination: {}, ip: {}, port: {}, hops: {} }}",
-            self.info_source, self.destination, self.ip, self.port, self.hops
+            "RoutingEntry {{ info_source: {}, destination: {}, ip: {}, port: {}, hops: {}, ttl: {}, expires: {} }}",
+            self.info_source, self.destination, self.ip, self.port, self.hops, self.ttl, !self.dont_expire
         )
     }
 }
@@ -91,6 +107,8 @@ impl Display for RoutingEntry {
 #[cfg(test)]
 mod tests {
     use bytes::BytesMut;
+
+    use crate::packets::routing_entry::TTL;
 
     use super::RoutingEntry;
 
@@ -102,6 +120,8 @@ mod tests {
             ip: String::from("127.0.0.1"),
             port: 1234,
             hops: 0,
+            ttl: TTL,
+            dont_expire: false,
         };
 
         let bytes = entry.to_bytes();
@@ -141,6 +161,8 @@ mod tests {
             ip: String::from("127.0.0.1"),
             port: 1234,
             hops: 0,
+            ttl: TTL,
+            dont_expire: false,
         };
 
         let bytes = entry.to_bytes();

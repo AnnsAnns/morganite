@@ -3,7 +3,7 @@ use std::fmt::{self, Display, Formatter};
 use bytes::{BufMut, BytesMut};
 use log::debug;
 
-use crate::packets::routing_entry::RoutingEntry;
+use crate::packets::routing_entry::{RoutingEntry, TTL};
 
 pub struct Routingtable {
     entries: Vec<RoutingEntry>,
@@ -14,6 +14,36 @@ impl Routingtable {
         Routingtable {
             entries: Vec::new(),
         }
+    }
+
+    pub fn reset_ttl(&mut self, source: String) {
+        for entry in &mut self.entries {
+            if entry.info_source == source {
+                entry.ttl = TTL;
+            }
+        }
+    }
+
+    pub fn reset_ttl_for_target(&mut self, target: String) {
+        for entry in &mut self.entries {
+            if entry.destination == target {
+                entry.ttl = TTL;
+            }
+        }
+    }
+
+    pub async fn decrement_ttl(&mut self) {
+        for entry in &mut self.entries {
+            if entry.dont_expire {
+                continue;
+            }
+            entry.ttl -= 1;
+        }
+    }
+
+    
+    pub async fn remove_expired_entries(&mut self) {
+        self.entries.retain(|entry| entry.ttl > 0 || entry.dont_expire);
     }
 
     /**
@@ -31,7 +61,16 @@ impl Routingtable {
             "New Entry \"{}\" from \"{}\" ({}:{})",
             &entry.destination, &entry.info_source, &entry.ip, &entry.port
         );
-        self.entries.push(entry);
+
+        if let Some(existing_entry) = self.get_entry(entry.destination.clone()) {
+            if existing_entry.hops > entry.hops {
+                debug!("Updating entry for {}", entry.destination);
+                self.entries.retain(|e| e.destination != entry.destination);
+                self.entries.push(entry);
+            }
+        } else {
+            self.entries.push(entry);
+        }
     }
 
     pub async fn get_direct_sources(&self, of_target: String) -> Vec<String> {

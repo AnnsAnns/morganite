@@ -14,7 +14,7 @@ use tokio::net::TcpStream;
 use tokio::sync::Mutex;
 
 pub struct SocketReadHandler {
-    morganite: Arc<Mutex<Morganite>>,
+    pub morganite: Arc<Mutex<Morganite>>,
     socket: TcpStream,
     target_name: String,
 }
@@ -81,6 +81,15 @@ impl SocketReadHandler {
                         stream.shutdown().await.unwrap();
                         continue;
                     }
+
+                    // Reset ttl to 30
+                    self.morganite
+                        .lock()
+                        .await
+                        .routingtable
+                        .lock()
+                        .await
+                        .reset_ttl_for_target(header.get_source());
 
                     match msg_type {
                         PacketType::Connection => {
