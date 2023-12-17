@@ -24,7 +24,7 @@ impl Listener {
     }
 
     pub async fn listen(&mut self) {
-        info!("Listening for new connections!");
+        info!("Listening for new connections at {}", self.listener.local_addr().unwrap());
 
         loop {
             match self.listener.accept().await {

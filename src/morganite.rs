@@ -4,7 +4,7 @@ use log::{debug, info, warn};
 
 use std::io::Write;
 use std::sync::Arc;
-use tokio::{sync::Mutex, net::TcpStream};
+use tokio::{sync::Mutex, net::TcpStream, io::AsyncWriteExt};
 
 use crate::{
     packets::{
@@ -66,12 +66,13 @@ impl Morganite {
         self.routingtable_add(entry).await;
     }
 
-    pub async fn write(&self, packet: Packet, addr: String) {
-        let mut writer = SocketWriteHandler::new(
-            TcpStream::connect(addr.clone()).await.unwrap(),
-            addr.clone(),
-        ).await;
-        writer.write(packet).await;
+    pub async fn write(&self, msg: Packet, addr: String) {
+        let mut socket = TcpStream::connect(addr.clone()).await.unwrap();
+        debug!("Sending packet {:?} to {}", msg, addr);
+        let mut msg = msg.to_bytes();
+        socket.writable().await.unwrap();
+        socket.write_all(&mut msg).await.unwrap();
+        socket.flush().await.unwrap();
     }
 
     /**
