@@ -3,8 +3,9 @@ use log::{debug, info, warn};
 
 
 use std::io::Write;
+use std::net::TcpStream;
 use std::sync::Arc;
-use tokio::{sync::Mutex, net::TcpStream, io::AsyncWriteExt};
+use tokio::sync::Mutex;
 
 use crate::{
     packets::{
@@ -13,7 +14,7 @@ use crate::{
         Packet, connection::ConnectionPacket,
     },
     routing::Routingtable,
-    RoutingTableType, listener::socket_write_handler::SocketWriteHandler,
+    RoutingTableType,
 };
 
 pub struct Morganite {
@@ -64,15 +65,6 @@ impl Morganite {
         );
 
         self.routingtable_add(entry).await;
-    }
-
-    pub async fn write(&self, msg: Packet, addr: String) {
-        let mut socket = TcpStream::connect(addr.clone()).await.unwrap();
-        debug!("Sending packet {:?} to {}", msg, addr);
-        let mut msg = msg.to_bytes();
-        socket.writable().await.unwrap();
-        socket.write_all(&mut msg).await.unwrap();
-        socket.flush().await.unwrap();
     }
 
     /**
@@ -148,7 +140,17 @@ impl Morganite {
             warn!("Invalid checksum was generated (Something is seriously wrong lol)");
             return;
         }
-        self.write(packet, self.get_addr_of(destination.clone()).await.unwrap()).await;
+
+        let mut connection = match TcpStream::connect(entry.get_address()) {
+            Ok(connection) => connection,
+            Err(e) => {
+                warn!("Could not connect to {}: {} - Removing from Routing Table", entry.get_address(), e);
+                self.routingtable.lock().await.remove_entry(destination.clone()).await;
+                return;
+            }
+        };
+        connection.write_all(&packet.to_bytes()).unwrap();
+        connection.flush().unwrap();
         debug!("Sent routingtable to {}", destination);
     }
 
@@ -201,16 +203,21 @@ impl Morganite {
      * @param target_name The name of the target
      */
     pub async fn connect_new(&mut self, destination: String, port: String, target_name: String) {
+        debug!(
+            "Connecting to {} ({}) on port {}",
+            target_name, destination, port
+        );
         let entry = RoutingEntry::new(
             self.own_name.clone(),
             target_name.clone(),
             destination.clone(),
-            port.clone().parse::<u16>().unwrap(),
+            port.parse::<u16>().unwrap(),
             1,
         );
-        self.routingtable_add(entry).await;
 
-        self.send_connectionpacket(target_name, true).await;
+        self.routingtable_add(entry).await;
+        self.send_connectionpacket(target_name.clone(), true).await;
+        self.send_routingtable(target_name.clone()).await;
     }
 
     pub async fn send_connectionpacket(&mut self, target: String, first: bool) {
@@ -222,6 +229,7 @@ impl Morganite {
                 return;
             }
         };
+        let mut connection = TcpStream::connect(entry.get_address()).unwrap();
         let header = BaseHeader::new(
             PacketType::Connection,
             32,
@@ -236,7 +244,8 @@ impl Morganite {
         msg.put(header.to_bytes());
         msg.put(connection_packet.clone());
         let packet = Packet::create_crc32(msg).await;
-        self.write(packet, self.get_addr_of(target.clone()).await.unwrap()).await;
+        connection.write_all(&packet.to_bytes()).unwrap();
+        connection.flush().unwrap();
         debug!("Sent connection packet to {}", target);
     }
 
@@ -296,6 +305,7 @@ impl Morganite {
                 return;
             }
         };
+        let mut connection = TcpStream::connect(entry.get_address()).unwrap();
         let header = BaseHeader::new(
             PacketType::Message,
             32,
@@ -307,7 +317,8 @@ impl Morganite {
         msg.put(header.to_bytes());
         msg.put(message.as_bytes());
         let packet = Packet::create_crc32(msg).await;
-        self.write(packet, self.get_addr_of(target.clone()).await.unwrap()).await;
+        connection.write_all(&packet.to_bytes()).unwrap();
+        connection.flush().unwrap();
         debug!("Sent message to {}", target);
     }
 }
