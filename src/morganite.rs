@@ -110,7 +110,7 @@ impl Morganite {
         }
 
         // Lock routing table to get entry
-        let routingtable = self.routingtable.lock().await;
+        let mut routingtable = self.routingtable.lock().await;
 
         let entry = match routingtable.get_entry(destination.clone()) {
             Some(entry) => entry,
@@ -153,7 +153,7 @@ impl Morganite {
             Ok(connection) => connection,
             Err(e) => {
                 warn!("Could not connect to {}: {} - Removing from Routing Table", entry.get_address(), e);
-                self.routingtable.lock().await.remove_entry(destination.clone()).await;
+                routingtable.remove_entry(destination.clone()).await;
                 return;
             }
         };
