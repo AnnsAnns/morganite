@@ -18,7 +18,7 @@ use crate::{
 };
 
 pub struct Morganite {
-    routingtable: RoutingTableType,
+    pub routingtable: RoutingTableType,
     own_name: String,
     own_port: String,
     own_addr: String,
@@ -44,6 +44,10 @@ impl Morganite {
         }
     }
 
+    pub fn get_routingtable(&self) -> RoutingTableType {
+        self.routingtable.clone()
+    }
+
     /**
      * Prints the routing table to the console
      */
@@ -56,13 +60,15 @@ impl Morganite {
      * Adds the own name to the routing table
      */
     pub async fn add_self_to_routingtable(&mut self) {
-        let entry = RoutingEntry::new(
+        let mut entry = RoutingEntry::new(
             self.own_name.clone(),
             self.own_name.clone(),
             self.own_addr.clone(),
             self.own_port.clone().parse::<u16>().unwrap(),
             1,
         );
+
+        entry.set_dont_expire(true);
 
         self.routingtable_add(entry).await;
     }
@@ -74,7 +80,9 @@ impl Morganite {
         debug!(
             "New Entry \"{}\" from \"{}\" ({}:{})",
             &entry.destination, &entry.info_source, &entry.ip, &entry.port);
+        let info_source = entry.info_source.clone();
         self.routingtable.lock().await.add_entry(entry).await;
+        self.routingtable.lock().await.reset_ttl(info_source);
     }
 
     /**

@@ -13,6 +13,7 @@ mod listener;
 mod morganite;
 mod packets;
 mod routing;
+mod routing_ttl_manager;
 mod tui;
 
 use arg_parsing::{parse_name, parse_port};
@@ -59,6 +60,13 @@ async fn main() {
 
     // Print routing table
     morganite.lock().await.print_routingtable().await;
+
+    // Start routing table TTL manager
+    let mut routing_ttl_manager =
+        routing_ttl_manager::RoutingTTLManager::new(morganite.lock().await.get_routingtable());
+    let _routing_ttl_manager_thread = tokio::spawn(async move {
+        routing_ttl_manager.start().await;
+    });
 
     loop {
         tokio::time::sleep(Duration::from_secs(ROUTING_UPDATE_INTERVAL)).await;
