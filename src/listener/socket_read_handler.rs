@@ -140,6 +140,7 @@ impl SocketReadHandler {
                         PacketType::Routing => {
                             // Routing message
                             debug!("Routing message received");
+                            debug!("Bytes: {:?}", packet.bytes);
                             self.morganite
                                 .lock()
                                 .await
