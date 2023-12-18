@@ -13,14 +13,16 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
 use tokio::sync::Mutex;
 
+use super::socket::SocketStream;
+
 pub struct SocketReadHandler {
     pub morganite: Arc<Mutex<Morganite>>,
-    socket: TcpStream,
+    socket: Arc<Mutex<SocketStream>>,
     target_name: String,
 }
 
 impl SocketReadHandler {
-    pub fn new(morganite: Arc<Mutex<Morganite>>, socket: TcpStream) -> SocketReadHandler {
+    pub fn new(morganite: Arc<Mutex<Morganite>>, socket: Arc<Mutex<SocketStream>>) -> SocketReadHandler {
         SocketReadHandler {
             morganite,
             socket,
@@ -32,7 +34,7 @@ impl SocketReadHandler {
         loop {
             let mut msg = Vec::new();
 
-            match self.socket.read_to_end(&mut msg).await {
+            match self.socket.lock().await.read_to_end(&mut msg).await {
                 Ok(n) => {
                     if n == 0 {
                         info!("Connection to {} closed by client!", self.target_name);
@@ -96,7 +98,40 @@ impl SocketReadHandler {
                             // Connection message
                             debug!("Connection message received");
 
-                            self.connection_packet_handler(packet.bytes).await;
+                            let bytes = packet.bytes;
+
+                            let _base_header = BaseHeader::from_bytes(bytes.clone()).unwrap();
+                            let connection_packet = ConnectionPacket::from_bytes(BytesMut::from(
+                                // Create BytesMut
+                                bytes[BASE_HEADER_SIZE..] // Get remaining bytes (without header)
+                                    .to_vec()
+                                    .as_slice(), // Convert Vec<u8> to &[u8]
+                            ));
+                    
+                            let mut morganite = self.morganite.lock().await;
+                            // As this client directly connected to us we can ignore other routing entries to that client
+                            morganite.remove_entry(connection_packet.name.clone()).await;
+                    
+                            let peer_addr = self.socket.lock().await.reader.peer_addr().unwrap().clone().to_string();
+                            let full_addr = peer_addr.split(':').collect::<Vec<&str>>();
+                            let ip = full_addr.first().unwrap().to_string();
+                            let _port = full_addr.get(1).unwrap().parse::<u16>().unwrap();
+                            self.target_name = connection_packet.name.clone();
+                    
+                            debug!("Adding routing entry for {}", connection_packet.name);
+                    
+                            let own_name = morganite.get_own_name();
+                    
+                            morganite
+                                .routingtable_add(RoutingEntry::new(
+                                    own_name,
+                                    connection_packet.name.clone(),
+                                    ip,
+                                    connection_packet.port,
+                                    1, // Is it 2?
+                                ))
+                                .await;
+                            debug!("Added routing entry for {}", connection_packet.name);
                         }
                         PacketType::Routing => {
                             // Routing message
@@ -106,8 +141,8 @@ impl SocketReadHandler {
                                 .await
                                 .update_routing_table(
                                     packet.bytes,
-                                    self.socket
-                                        .peer_addr()
+                                    self.socket.lock().await
+                                        .reader.peer_addr()
                                         .unwrap()
                                         .to_string()
                                         .split(':')
@@ -121,7 +156,20 @@ impl SocketReadHandler {
                         PacketType::Message => {
                             // Data message
                             debug!("Data message received");
-                            self.message_packet_handler(packet.bytes).await;
+                            let bytes = packet.bytes;
+                            let base_header = BaseHeader::from_bytes(bytes.clone()).unwrap();
+                            let message_packet = MessagePacket::from_bytes(BytesMut::from(
+                                // Create BytesMut
+                                bytes[BASE_HEADER_SIZE..] // Get remaining bytes (without header)
+                                    .to_vec()
+                                    .as_slice(), // Convert Vec<u8> to &[u8]
+                            ));
+                    
+                            info!(
+                                "MSG from {}:\n{}",
+                                base_header.get_source(),
+                                message_packet.get_message()
+                            );
                         }
                     }
                 }
@@ -130,7 +178,6 @@ impl SocketReadHandler {
                         "Error while reading socket: {:?} - Dropping socket connection!",
                         e
                     );
-                    self.socket.shutdown().await.unwrap();
                     // Remove entry from routing table
                     if !self.target_name.is_empty() {
                         self.morganite
@@ -143,57 +190,6 @@ impl SocketReadHandler {
                 }
             }
         }
-    }
-
-    pub async fn connection_packet_handler(&mut self, bytes: BytesMut) {
-        let _base_header = BaseHeader::from_bytes(bytes.clone()).unwrap();
-        let connection_packet = ConnectionPacket::from_bytes(BytesMut::from(
-            // Create BytesMut
-            bytes[BASE_HEADER_SIZE..] // Get remaining bytes (without header)
-                .to_vec()
-                .as_slice(), // Convert Vec<u8> to &[u8]
-        ));
-
-        let mut morganite = self.morganite.lock().await;
-        // As this client directly connected to us we can ignore other routing entries to that client
-        morganite.remove_entry(connection_packet.name.clone()).await;
-
-        let peer_addr = self.socket.peer_addr().unwrap().clone().to_string();
-        let full_addr = peer_addr.split(':').collect::<Vec<&str>>();
-        let ip = full_addr.first().unwrap().to_string();
-        let _port = full_addr.get(1).unwrap().parse::<u16>().unwrap();
-        self.target_name = connection_packet.name.clone();
-
-        debug!("Adding routing entry for {}", connection_packet.name);
-
-        let own_name = morganite.get_own_name();
-
-        morganite
-            .routingtable_add(RoutingEntry::new(
-                own_name,
-                connection_packet.name.clone(),
-                ip,
-                connection_packet.port,
-                1, // Is it 2?
-            ))
-            .await;
-        debug!("Added routing entry for {}", connection_packet.name);
-    }
-
-    pub async fn message_packet_handler(&mut self, bytes: BytesMut) {
-        let base_header = BaseHeader::from_bytes(bytes.clone()).unwrap();
-        let message_packet = MessagePacket::from_bytes(BytesMut::from(
-            // Create BytesMut
-            bytes[BASE_HEADER_SIZE..] // Get remaining bytes (without header)
-                .to_vec()
-                .as_slice(), // Convert Vec<u8> to &[u8]
-        ));
-
-        info!(
-            "MSG from {}:\n{}",
-            base_header.get_source(),
-            message_packet.get_message()
-        );
     }
 }
 
