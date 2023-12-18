@@ -15,7 +15,6 @@ use tokio::sync::Mutex;
 
 use super::socket::SocketStream;
 use colored::*;
-use rand::prelude::SliceRandom;
 
 pub struct SocketReadHandler {
     pub morganite: Arc<Mutex<Morganite>>,
@@ -29,20 +28,14 @@ pub struct SocketReadHandler {
 
 impl SocketReadHandler {
     pub fn new(morganite: Arc<Mutex<Morganite>>, socket: Arc<Mutex<SocketStream>>, peer_addr: String, own_addr: String) -> SocketReadHandler {
-        // Generate random colors for this client to make it easier to distinguish between multiple clients
-        let mut rng = rand::thread_rng();
-        let colors: Vec<Color> = vec![Color::Red, Color::Green, Color::Yellow, Color::Blue, Color::Magenta, Color::Cyan, Color::White];
-        let color_fg = colors.choose(&mut rng).unwrap().clone();
-        let color_bg = colors.choose(&mut rng).unwrap().clone();
-
         SocketReadHandler {
             morganite,
             socket,
             target_name: "".to_string(),
             peer_addr,
             own_addr,
-            color_fg,
-            color_bg,
+            color_fg: Color::White,
+            color_bg: Color::Green,
         }
     }
 
@@ -180,10 +173,11 @@ impl SocketReadHandler {
                                     .as_slice(), // Convert Vec<u8> to &[u8]
                             ));
                     
-                            println!("{}",
-                                format!("MSG from {}:\n{}",
-                                base_header.get_source().color(self.color_fg),
-                                message_packet.get_message().color(self.color_fg)).on_color(self.color_bg)
+                            println!("📥 {}",
+                                format!("From @{}:\n{}",
+                                base_header.get_source(),
+                                message_packet.get_message()
+                                ).color(self.color_fg).on_color(self.color_bg)
                             );
                         }
                     }
