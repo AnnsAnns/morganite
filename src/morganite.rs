@@ -190,9 +190,11 @@ impl Morganite {
         let mut offset = 1;
         for _ in 0..total_entries {
             let entry_bytes = routingtable_bytes[offset..offset + 9].to_vec();
+            debug!("Entry bytes: {:#?}", entry_bytes);
             let entry =
                 RoutingEntry::from_bytes(BytesMut::from(entry_bytes.as_slice()), ip.clone());
             debug!("Adding entry: {:#?}", entry);
+            offset += 9;
             if entry.info_source == self.own_name
                 || entry.destination == self.own_name
                 || entry.destination == entry.info_source
@@ -200,7 +202,6 @@ impl Morganite {
                 continue;
             }
             self.routingtable_add(entry).await;
-            offset += 9;
         }
     }
 

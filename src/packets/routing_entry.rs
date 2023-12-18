@@ -69,14 +69,21 @@ impl RoutingEntry {
         bytes.put_u16(self.port);
         debug!("Byte Translation: {} to {:#?}", self.hops.clone(), self.hops.clone());
         bytes.put_u8(self.hops);
+
+        debug!("Routing Entry Bytes: {:#?}", bytes);
         bytes
     }
 
     pub fn from_bytes(bytes: BytesMut, ip: String) -> RoutingEntry {
+        debug!("Routing Entry Bytes: {:#?}", bytes);
         let info_source = String::from_utf8(bytes[0..3].to_vec()).unwrap();
+        debug!("Info Source: {} / {:#?}", info_source, bytes[0..3].to_vec());
         let destination = String::from_utf8(bytes[3..6].to_vec()).unwrap();
+        debug!("Destination: {} / {:#?}", destination, bytes[3..6].to_vec());
         let port = u16::from_be_bytes([bytes[6], bytes[7]]);
+        debug!("Port: {} / {:#?}", port, bytes[6..8].to_vec());
         let hops = bytes[8];
+        debug!("Hops: {} / {:#?}", hops, bytes[8]);
 
         debug!("Received routing entry for {}", destination);
         debug!("IP: {}:{}", ip, port);
