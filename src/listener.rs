@@ -1,5 +1,4 @@
 pub mod socket_read_handler;
-pub mod socket_write_handler;
 pub mod socket;
 
 use crate::Morganite;
