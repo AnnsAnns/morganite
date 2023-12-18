@@ -11,7 +11,7 @@ use crate::{
     packets::{
         header::{BaseHeader, PacketType, BASE_HEADER_SIZE},
         routing_entry::RoutingEntry,
-        Packet, connection::ConnectionPacket,
+        Packet, connection::ConnectionPacket, message::MessagePacket,
     },
     routing::Routingtable,
     RoutingTableType,
@@ -324,7 +324,8 @@ impl Morganite {
         );
         let mut msg = BytesMut::with_capacity(1024);
         msg.put(header.to_bytes());
-        msg.put(message.as_bytes());
+        let messagepacket = MessagePacket::new(message.clone()).to_bytes();
+        msg.put(messagepacket);
         let packet = Packet::create_crc32(msg).await;
         connection.write_all(&packet.to_bytes()).unwrap();
         connection.flush().unwrap();
