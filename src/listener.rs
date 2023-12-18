@@ -33,9 +33,10 @@ impl Listener {
                 Ok((socket, addr)) => {
                     info!("New client connection {:?}", addr);
 
+                    let own_addr = self.listener.local_addr().unwrap().to_string();
                     let socket = Arc::new(Mutex::new(SocketStream::new(socket)));
 
-                    let mut handler = socket_read_handler::SocketReadHandler::new(self.morganite.clone(), socket);
+                    let mut handler = socket_read_handler::SocketReadHandler::new(self.morganite.clone(), socket, addr.to_string(), own_addr);
                     tokio::spawn(async move {
                         handler.process().await;
                     });

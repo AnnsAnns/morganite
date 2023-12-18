@@ -19,14 +19,18 @@ pub struct SocketReadHandler {
     pub morganite: Arc<Mutex<Morganite>>,
     socket: Arc<Mutex<SocketStream>>,
     target_name: String,
+    peer_addr: String,
+    own_addr: String,
 }
 
 impl SocketReadHandler {
-    pub fn new(morganite: Arc<Mutex<Morganite>>, socket: Arc<Mutex<SocketStream>>) -> SocketReadHandler {
+    pub fn new(morganite: Arc<Mutex<Morganite>>, socket: Arc<Mutex<SocketStream>>, peer_addr: String, own_addr: String) -> SocketReadHandler {
         SocketReadHandler {
             morganite,
             socket,
             target_name: "".to_string(),
+            peer_addr,
+            own_addr,
         }
     }
 
@@ -112,7 +116,7 @@ impl SocketReadHandler {
                             // As this client directly connected to us we can ignore other routing entries to that client
                             morganite.remove_entry(connection_packet.name.clone()).await;
                     
-                            let peer_addr = self.socket.lock().await.reader.peer_addr().unwrap().clone().to_string();
+                            let peer_addr = self.peer_addr.clone().to_string();
                             let full_addr = peer_addr.split(':').collect::<Vec<&str>>();
                             let ip = full_addr.first().unwrap().to_string();
                             let _port = full_addr.get(1).unwrap().parse::<u16>().unwrap();
@@ -141,9 +145,7 @@ impl SocketReadHandler {
                                 .await
                                 .update_routing_table(
                                     packet.bytes,
-                                    self.socket.lock().await
-                                        .reader.peer_addr()
-                                        .unwrap()
+                                    self.peer_addr
                                         .to_string()
                                         .split(':')
                                         .collect::<Vec<&str>>()
