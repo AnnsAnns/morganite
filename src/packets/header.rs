@@ -86,6 +86,7 @@ impl BaseHeader {
         bytes
     }
 
+    #[allow(dead_code)] // Will be used later
     pub fn get_ip(&self) -> String {
         self.source.clone()
     }

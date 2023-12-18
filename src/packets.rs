@@ -21,7 +21,7 @@ impl Packet {
 
     pub fn from_bytes(mut bytes: Vec<u8>) -> Packet {
         // Check if empty
-        if bytes.len() == 0 {
+        if bytes.is_empty() {
             return Packet {
                 bytes: BytesMut::new(),
                 checksum: 0,

@@ -6,10 +6,10 @@ use crate::packets::Packet;
 use crate::Morganite;
 
 use bytes::BytesMut;
-use log::{debug, error, info};
+use log::{debug, error};
 
 use std::sync::Arc;
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::io::AsyncWriteExt;
 use tokio::net::TcpStream;
 use tokio::sync::Mutex;
 
@@ -21,6 +21,7 @@ pub struct SocketReadHandler {
     socket: Arc<Mutex<SocketStream>>,
     target_name: String,
     peer_addr: String,
+    #[allow(dead_code)]
     own_addr: String,
     color_fg: Color,
     color_bg: Color,
