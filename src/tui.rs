@@ -97,13 +97,20 @@ impl Tui {
                 };
 
                 // Collect the rest of the line as message
-                let message = args.collect::<Vec<&str>>().join(" ");
+                let mut message = args.collect::<Vec<&str>>().join(" ");
+
+                // The message can only be 320 characters long
+                if message.len() > 320 {
+                    warn!("Message is too long, truncating to 320 characters");
+                    message.truncate(320);
+                }
+
                 debug!("Sending message to {}: {}", destination, message);
 
                 println!("📤 {}",
                     format!("@You to @{}:\n{}",
                     destination,
-                    message).bright_white().on_magenta().italic()
+                    message).trim().bright_white().on_magenta().italic()
                 );
 
                 self.morganite
