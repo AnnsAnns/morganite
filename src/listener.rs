@@ -5,7 +5,7 @@ pub mod socket;
 use crate::Morganite;
 use crate::listener::socket::SocketStream;
 
-use log::{info, warn};
+use log::{info, warn, debug};
 
 use std::sync::Arc;
 
@@ -31,7 +31,7 @@ impl Listener {
         loop {
             match self.listener.accept().await {
                 Ok((socket, addr)) => {
-                    info!("New client connection {:?}", addr);
+                    debug!("New client connection {:?}", addr);
 
                     let own_addr = self.listener.local_addr().unwrap().to_string();
                     let socket = Arc::new(Mutex::new(SocketStream::new(socket)));
