@@ -5,6 +5,7 @@ use tokio::sync::Mutex;
 use crate::Morganite;
 
 use log::{debug, info, warn};
+use colored::*;
 
 pub struct Tui {
     morganite: Arc<Mutex<Morganite>>,
@@ -29,7 +30,7 @@ impl Tui {
                     "Available commands:
                 exit,
                 help,
-                connect <IP> <port>,
+                connect <IP> <port> <name>,
                 disconnect <name>,
                 show_routingtable,
                 force_update,
@@ -97,7 +98,14 @@ impl Tui {
 
                 // Collect the rest of the line as message
                 let message = args.collect::<Vec<&str>>().join(" ");
-                info!("Sending message to {}: {}", destination, message);
+                debug!("Sending message to {}: {}", destination, message);
+
+                println!("📤 {}",
+                    format!("@You to @{}:\n{}",
+                    destination,
+                    message).bright_white().on_magenta().italic()
+                );
+
                 self.morganite
                     .lock()
                     .await
