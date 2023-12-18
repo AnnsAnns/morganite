@@ -1,4 +1,4 @@
-use std::sync::Arc;
+
 
 use tokio::{net::{TcpStream, tcp::{OwnedReadHalf, OwnedWriteHalf}}, io::{AsyncWriteExt, AsyncReadExt}};
 
@@ -9,13 +9,14 @@ pub struct SocketStream {
 
 impl SocketStream {
     pub fn new(socket: TcpStream) -> SocketStream {
-        let (mut reader, mut writer) = socket.into_split();
+        let (reader, writer) = socket.into_split();
         SocketStream {
             reader,
             writer,
         }
     }
 
+    #[allow(dead_code)]
     pub async fn write(&mut self, msg: Vec<u8>) {
         self.writer.writable().await.unwrap();
         self.writer.write_all(&msg).await.unwrap();

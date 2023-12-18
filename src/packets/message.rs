@@ -8,10 +8,12 @@ pub struct MessagePacket {
 }
 
 impl MessagePacket {
+    #[allow(dead_code)] // Will be used later
     pub fn new(msg: String) -> MessagePacket {
         MessagePacket { msg }
     }
 
+    #[allow(dead_code)] // Will be used later
     pub fn to_bytes(&self) -> BytesMut {
         let mut bytes = BytesMut::with_capacity(320);
         bytes.put(self.msg.as_bytes());
