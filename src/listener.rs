@@ -1,7 +1,9 @@
 pub mod socket_read_handler;
 pub mod socket_write_handler;
+pub mod socket;
 
 use crate::Morganite;
+use crate::listener::socket::SocketStream;
 
 use log::{info, warn};
 
@@ -30,6 +32,8 @@ impl Listener {
             match self.listener.accept().await {
                 Ok((socket, addr)) => {
                     info!("New client connection {:?}", addr);
+
+                    let socket = Arc::new(Mutex::new(SocketStream::new(socket)));
 
                     let mut handler = socket_read_handler::SocketReadHandler::new(self.morganite.clone(), socket);
                     tokio::spawn(async move {
