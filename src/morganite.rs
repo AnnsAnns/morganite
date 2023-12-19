@@ -1,6 +1,6 @@
 use bytes::{BufMut, BytesMut};
 use colored::Colorize;
-use log::{debug, info, warn};
+use log::{debug, warn};
 
 
 use std::io::Write;

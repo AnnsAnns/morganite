@@ -27,15 +27,14 @@ impl Tui {
                 return;
             } else if line.starts_with("help") {
                 println!(
-                    "{}\n{}",
-                    "\nAvailable commands:".italic().underline(),
-                    "        exit - Exit the program,
+                    "{}\n        exit - Exit the program,
         help - Show this help,
         connect <IP> <port> <name> - Connect to a node,
         disconnect <name> - Disconnect from a node,
         show_routingtable - Show the routing table,
         force_update - Force an update of the routing table,
-        send <name> <message> - Send a message to a node,"
+        send <name> <message> - Send a message to a node,",
+                    "\nAvailable commands:".italic().underline()
                 );
             } else if line.starts_with("dbg1") {
                 self.connect("127.0.0.1", "12345", "AAA").await;

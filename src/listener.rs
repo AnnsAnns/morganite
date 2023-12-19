@@ -5,7 +5,7 @@ use crate::listener::socket::SocketStream;
 use crate::Morganite;
 
 use colored::Colorize;
-use log::{debug, info, warn};
+use log::{debug, warn};
 
 use std::sync::Arc;
 
