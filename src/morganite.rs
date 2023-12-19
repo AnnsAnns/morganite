@@ -1,4 +1,5 @@
 use bytes::{BufMut, BytesMut};
+use colored::Colorize;
 use log::{debug, info, warn};
 
 
@@ -53,7 +54,7 @@ impl Morganite {
      */
     pub async fn print_routingtable(&self) {
         let routingtable = self.routingtable.lock();
-        info!("Routingtable: {}", routingtable.await);
+        print!("{}", routingtable.await.to_string().on_black().bright_magenta());
     }
 
     /**
