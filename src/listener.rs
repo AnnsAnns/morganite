@@ -1,10 +1,11 @@
-pub mod socket_read_handler;
 pub mod socket;
+pub mod socket_read_handler;
 
-use crate::Morganite;
 use crate::listener::socket::SocketStream;
+use crate::Morganite;
 
-use log::{info, warn, debug};
+use colored::Colorize;
+use log::{debug, info, warn};
 
 use std::sync::Arc;
 
@@ -25,17 +26,36 @@ impl Listener {
     }
 
     pub async fn listen(&mut self) {
-        info!("Listening for new connections at {}", self.listener.local_addr().unwrap());
+        println!(
+            "{} {} {}",
+            "(`Д´)ゞ".bold().red(),
+            "Listening for new connections at".red().italic(),
+            self.listener
+                .local_addr()
+                .unwrap()
+                .to_string()
+                .bright_red()
+                .bold()
+                .underline()
+        );
 
         loop {
             match self.listener.accept().await {
                 Ok((socket, addr)) => {
-                    debug!("New client connection {:?}", addr);
+                    debug!(
+                        "New client connection {:?}",
+                        addr.to_string().bold().underline()
+                    );
 
                     let own_addr = self.listener.local_addr().unwrap().to_string();
                     let socket = Arc::new(Mutex::new(SocketStream::new(socket)));
 
-                    let mut handler = socket_read_handler::SocketReadHandler::new(self.morganite.clone(), socket, addr.to_string(), own_addr);
+                    let mut handler = socket_read_handler::SocketReadHandler::new(
+                        self.morganite.clone(),
+                        socket,
+                        addr.to_string(),
+                        own_addr,
+                    );
                     tokio::spawn(async move {
                         handler.process().await;
                     });

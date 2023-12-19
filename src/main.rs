@@ -1,3 +1,4 @@
+use colored::Colorize;
 use listener::Listener;
 
 use morganite::Morganite;
@@ -31,6 +32,14 @@ async fn main() {
     simple_logger::SimpleLogger::new().with_level(log::LevelFilter::Info).env().init().unwrap();
     let port = parse_port();
 
+    println!(
+        "{}{}{}{}",
+        "·͙⁺˚*•̩̩͙✩•̩̩͙*˚⁺‧͙⁺˚*•̩̩͙✩•̩̩͙*˚⁺‧͙⁺˚*•̩̩͙✩•̩̩͙*˚⁺‧͙".bright_green(),
+        "Merry".bright_red().bold().italic().underline(),
+        " X’mas".bright_white().bold().italic().underline(),
+        "·͙⁺˚*•̩̩͙✩•̩̩͙*˚⁺‧͙⁺˚*•̩̩͙✩•̩̩͙*˚⁺‧͙⁺˚*•̩̩͙✩•̩̩͙*˚⁺‧͙".bright_green()
+    );
+
     let morganite = Arc::new(Mutex::new(Morganite::new(
         parse_name(),
         port.to_string(),
@@ -58,15 +67,33 @@ async fn main() {
     // Add self to routing table
     morganite.lock().await.add_self_to_routingtable().await;
 
-    // Print routing table
-    morganite.lock().await.print_routingtable().await;
-
     // Start routing table TTL manager
     let mut routing_ttl_manager =
         routing_ttl_manager::RoutingTTLManager::new(morganite.lock().await.get_routingtable());
     let _routing_ttl_manager_thread = tokio::spawn(async move {
         routing_ttl_manager.start().await;
     });
+
+    println!(
+        "{}",
+        format!(
+            "{} {} {} {} {}",
+            "R".bright_cyan(),
+            "E".bright_magenta(),
+            "A".bright_white(),
+            "D".bright_magenta(),
+            "Y".bright_cyan()
+        )
+        .bold()
+        .on_black()
+        .underline()
+        .italic()
+    );
+
+    println!("{}", format!("{} Use {} to list commands",
+        "(╭ರ_•́)".bold(),
+        "help".bold().underline().bright_yellow(),
+    ).yellow());
 
     loop {
         tokio::time::sleep(Duration::from_secs(ROUTING_UPDATE_INTERVAL)).await;

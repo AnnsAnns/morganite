@@ -4,8 +4,8 @@ use tokio::sync::Mutex;
 
 use crate::Morganite;
 
-use log::{debug, info, warn};
 use colored::*;
+use log::{debug, info, warn};
 
 pub struct Tui {
     morganite: Arc<Mutex<Morganite>>,
@@ -26,16 +26,16 @@ impl Tui {
             if line.starts_with("exit") {
                 return;
             } else if line.starts_with("help") {
-                info!(
-                    "Available commands:
-                exit,
-                help,
-                connect <IP> <port> <name>,
-                disconnect <name>,
-                show_routingtable,
-                force_update,
-                send <name> <message>,
-            "
+                println!(
+                    "{}\n{}",
+                    "\nAvailable commands:".italic().underline(),
+                    "        exit - Exit the program,
+        help - Show this help,
+        connect <IP> <port> <name> - Connect to a node,
+        disconnect <name> - Disconnect from a node,
+        show_routingtable - Show the routing table,
+        force_update - Force an update of the routing table,
+        send <name> <message> - Send a message to a node,"
                 );
             } else if line.starts_with("dbg1") {
                 self.connect("127.0.0.1", "12345", "AAA").await;
@@ -80,7 +80,8 @@ impl Tui {
                     }
                 };
                 info!("Disconnecting from {}", destination);
-            } else if line.starts_with("show_routingtable") || line.starts_with("list_routingtable") {
+            } else if line.starts_with("show_routingtable") || line.starts_with("list_routingtable")
+            {
                 self.morganite.lock().await.print_routingtable().await;
             } else if line.starts_with("force_update") {
                 info!("Forcing update");
@@ -107,10 +108,13 @@ impl Tui {
 
                 debug!("Sending message to {}: {}", destination, message);
 
-                println!("📤 {}",
-                    format!("@You to @{}:\n{}",
-                    destination,
-                    message).trim().bright_white().on_magenta().italic()
+                println!(
+                    "📤 {}",
+                    format!("@You to @{}:\n{}", destination, message)
+                        .trim()
+                        .bright_white()
+                        .on_magenta()
+                        .italic()
                 );
 
                 self.morganite
@@ -126,8 +130,7 @@ impl Tui {
 
     pub async fn connect(&mut self, destination: &str, port: &str, target_name: &str) {
         info!("Connecting to {} on port {}", destination, port);
-        self
-            .morganite
+        self.morganite
             .lock()
             .await
             .connect_new(

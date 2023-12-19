@@ -3,7 +3,7 @@ use std::{env::args, process::exit};
 use log::warn;
 
 pub fn help() {
-    warn!("Usage: ./routingtable <port> <name (max 3 chars)>");
+    warn!("Usage: ./morganite <port> <name (max 3 chars)>");
 }
 
 pub fn parse_port() -> String {
