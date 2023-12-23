@@ -1,0 +1,90 @@
+\documentclass[a4paper, 11pt]{article}    
+
+\usepackage[ngerman]{babel}                   
+\usepackage[onehalfspacing]{setspace}
+\usepackage[top=2.5cm,bottom=2.5cm,left=2cm,right=2cm,marginparwidth=1.75cm]{geometry}
+
+% Load useful packages
+\usepackage{graphicx}                          
+\usepackage{amsmath}                            
+\usepackage{xcolor}                             
+\definecolor{custom-blue}{RGB}{0,99,166} 
+\usepackage{hyperref}
+\hypersetup{colorlinks=true, allcolors=custom-blue}
+\usepackage[default]{sourcesanspro}             
+\usepackage[T1]{fontenc}                        
+\usepackage{wrapfig}
+\usepackage{fancyhdr}
+\usepackage{longtable}
+\usepackage{lastpage}
+\usepackage{float}
+\usepackage{tabularx} 
+\usepackage[table,xcdraw]{xcolor}
+\usepackage[normalem]{ulem}
+\useunder{\uline}{\ul}{}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{color}
+\usepackage{tabularray}
+\usepackage{enumitem}
+
+
+\pagestyle{myheadings}
+\pagestyle{fancy}     
+
+\definecolor{Alto}{rgb}{0.878,0.878,0.878}
+\definecolor{Nobel}{rgb}{0.701,0.701,0.701}
+
+\setlength{\headheight}{30pt}
+\renewcommand{\headrulewidth}{0.5pt}
+\renewcommand{\footrulewidth}{0.5pt}
+
+\fancyhead[C]{}                                 
+\fancyhead[R]{}                      
+\fancyfoot[L]{}
+\fancyfoot[C]{}                 
+\fancyfoot[R]{\thepage/\pageref{LastPage}}  
+
+
+% Set title, author, date
+\title{
+Requirements, Design and Test Documentation\\
+Chat Klient Morganite für RNP3
+}
+\author{
+Hert, Tom\\
+\texttt{2630010, Tom.Hert@haw-hamburg.de}
+\and
+Zacharias, Laurin\\
+\texttt{2621717, Laurin.Zacharias@haw-hamburg.de}
+}
+
+%%% Begin document %%%
+\begin{document}
+
+\maketitle                                  
+\tableofcontents
+
+\section{Änderunshistorie}
+% Please add the following required packages to your document preamble:
+% \usepackage{longtable}
+% Note: It may be necessary to compile the document several times to get a multi-page table to line up properly
+\begin{longtable}{|c|c|c|p{10cm}|}
+\hline
+Version & Erstellt   & Autor      & Kommentar
+\\ \hline
+\endfirsthead
+%
+\multicolumn{4}{c}%
+{{\bfseries Table \thetable\ continued from previous page}} \\
+\hline
+Version & Erstellt   & Autor      & Kommentar                                                                                                                            \\ \hline
+\endhead
+%
+0.1     & 2023-12-23 & Hert        & Initiale Version des RDT.                                                                                                    
+\\ \hline
+\end{longtable}
+
+\section{"Hier könnte ihr Text stehen!"}
+
+\end{document}
