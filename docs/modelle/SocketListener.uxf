@@ -1,0 +1,12 @@
+<diagram program="umletino" version="15.1"><zoom_level>10</zoom_level><help_text>Space for diagram notes</help_text><element><id>UMLState</id><coordinates><x>300</x><y>350</y><w>160</w><h>80</h></coordinates><panel_attributes>Wait for Connection
+--
+entry: listen(socket)</panel_attributes><additional_attributes></additional_attributes></element><element><id>UMLSpecialState</id><coordinates><x>370</x><y>140</y><w>20</w><h>20</h></coordinates><panel_attributes>type=initial</panel_attributes><additional_attributes></additional_attributes></element><element><id>UMLSpecialState</id><coordinates><x>200</x><y>540</y><w>20</w><h>20</h></coordinates><panel_attributes>type=final</panel_attributes><additional_attributes></additional_attributes></element><element><id>Relation</id><coordinates><x>370</x><y>150</y><w>30</w><h>60</h></coordinates><panel_attributes>lt=-&gt;</panel_attributes><additional_attributes>10;10;10;40</additional_attributes></element><element><id>Relation</id><coordinates><x>70</x><y>380</y><w>250</w><h>180</h></coordinates><panel_attributes>lt=-&gt;
+SHUTDOWN_RECEIVED
+cbase=l</panel_attributes><additional_attributes>230;10;140;10;140;160</additional_attributes></element><element><id>Relation</id><coordinates><x>370</x><y>370</y><w>270</w><h>220</h></coordinates><panel_attributes>lt=-&gt;
+ACCEPT_CONNECTION /
+addToWorkerPool(connection)</panel_attributes><additional_attributes>10;60;10;190;180;190;180;10;90;10</additional_attributes></element><element><id>UMLNote</id><coordinates><x>140</x><y>270</y><w>140</w><h>70</h></coordinates><panel_attributes>Socket Listener 
+v1.0
+bg=blue</panel_attributes><additional_attributes></additional_attributes></element><element><id>UMLState</id><coordinates><x>300</x><y>190</y><w>160</w><h>80</h></coordinates><panel_attributes>Create Socket
+--
+entry: createSocket(Port)</panel_attributes><additional_attributes></additional_attributes></element><element><id>Relation</id><coordinates><x>370</x><y>260</y><w>130</w><h>110</h></coordinates><panel_attributes>lt=-&gt;
+SOCKET_OPENED</panel_attributes><additional_attributes>10;10;10;90</additional_attributes></element></diagram>
