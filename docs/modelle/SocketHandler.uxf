@@ -1,0 +1,29 @@
+<diagram program="umletino" version="15.1"><zoom_level>11</zoom_level><element><id>UMLSpecialState</id><coordinates><x>362</x><y>20</y><w>22</w><h>22</h></coordinates><panel_attributes>type=initial</panel_attributes><additional_attributes></additional_attributes></element><element><id>UMLNote</id><coordinates><x>120</x><y>9</y><w>154</w><h>77</h></coordinates><panel_attributes>Socket Handler
+v1.0
+By: Tom
+bg=blue</panel_attributes><additional_attributes></additional_attributes></element><element><id>UMLState</id><coordinates><x>285</x><y>108</y><w>176</w><h>66</h></coordinates><panel_attributes>Wait for Incoming</panel_attributes><additional_attributes></additional_attributes></element><element><id>Relation</id><coordinates><x>362</x><y>31</y><w>33</w><h>99</h></coordinates><panel_attributes>lt=-&gt;</panel_attributes><additional_attributes>10;10;10;70</additional_attributes></element><element><id>Relation</id><coordinates><x>362</x><y>163</y><w>176</w><h>132</h></coordinates><panel_attributes>lt=-&gt;
+INCOMING_MESSAGE \
+read_to_end(&amp;bytes)
+get_type(&amp;bytes)</panel_attributes><additional_attributes>10;10;10;100</additional_attributes></element><element><id>UMLSpecialState</id><coordinates><x>351</x><y>273</y><w>44</w><h>44</h></coordinates><panel_attributes>type=decision</panel_attributes><additional_attributes></additional_attributes></element><element><id>UMLState</id><coordinates><x>560</x><y>262</y><w>198</w><h>66</h></coordinates><panel_attributes>Handle Connection Packet
+--
+entry: addRoutingTable()
+	  sendConnectionPacket()</panel_attributes><additional_attributes></additional_attributes></element><element><id>Relation</id><coordinates><x>384</x><y>273</y><w>198</w><h>44</h></coordinates><panel_attributes>lt=-&gt;
+CONNECTION_PACKET</panel_attributes><additional_attributes>10;20;160;20</additional_attributes></element><element><id>Relation</id><coordinates><x>450</x><y>141</y><w>231</w><h>143</h></coordinates><panel_attributes>lt=-&gt;
+SUCCESS</panel_attributes><additional_attributes>190;110;190;20;10;20</additional_attributes></element><element><id>UMLSpecialState</id><coordinates><x>351</x><y>658</y><w>22</w><h>22</h></coordinates><panel_attributes>type=final</panel_attributes><additional_attributes></additional_attributes></element><element><id>Relation</id><coordinates><x>461</x><y>317</y><w>275</w><h>231</h></coordinates><panel_attributes>lt=-&gt;
+FAILURE</panel_attributes><additional_attributes>180;10;180;190;10;190</additional_attributes></element><element><id>UMLState</id><coordinates><x>274</x><y>504</y><w>198</w><h>77</h></coordinates><panel_attributes>Cleanup
+--
+entry: removeRoutingEntry()</panel_attributes><additional_attributes></additional_attributes></element><element><id>Relation</id><coordinates><x>351</x><y>570</y><w>209</w><h>110</h></coordinates><panel_attributes>lt=-&gt;
+ROUTING_ENTRY_REMOVED</panel_attributes><additional_attributes>10;10;10;80</additional_attributes></element><element><id>UMLState</id><coordinates><x>274</x><y>372</y><w>198</w><h>77</h></coordinates><panel_attributes>Handle Message Packet
+--
+entry: printMessage(bytes)</panel_attributes><additional_attributes></additional_attributes></element><element><id>Relation</id><coordinates><x>362</x><y>306</y><w>143</w><h>88</h></coordinates><panel_attributes>lt=-&gt;
+MESSAGE_PACKET</panel_attributes><additional_attributes>10;10;10;60</additional_attributes></element><element><id>Relation</id><coordinates><x>351</x><y>438</y><w>88</w><h>88</h></coordinates><panel_attributes>lt=-&gt;
+FAILURE</panel_attributes><additional_attributes>10;10;10;60</additional_attributes></element><element><id>Relation</id><coordinates><x>373</x><y>53</y><w>121</w><h>77</h></coordinates><panel_attributes>lt=-&gt;
+PACKET_FAULTY</panel_attributes><additional_attributes>40;50;40;20;60;20;60;50</additional_attributes></element><element><id>Relation</id><coordinates><x>450</x><y>108</y><w>528</w><h>473</h></coordinates><panel_attributes>lt=-&gt;
+CONNECTION
+_DROPPED</panel_attributes><additional_attributes>10;10;380;10;380;410;20;410</additional_attributes></element><element><id>UMLState</id><coordinates><x>32</x><y>251</y><w>187</w><h>77</h></coordinates><panel_attributes>Handle Routing Update
+--
+entry: updateRoutingTable()</panel_attributes><additional_attributes></additional_attributes></element><element><id>Relation</id><coordinates><x>208</x><y>284</y><w>165</w><h>33</h></coordinates><panel_attributes>lt=-&gt;</panel_attributes><additional_attributes>130;10;10;10</additional_attributes></element><element><id>Relation</id><coordinates><x>450</x><y>130</y><w>407</w><h>308</h></coordinates><panel_attributes>lt=-&gt;
+SUCCESSS
+cbase=ru</panel_attributes><additional_attributes>20;260;290;260;290;10;10;10</additional_attributes></element><element><id>Relation</id><coordinates><x>120</x><y>119</y><w>187</w><h>154</h></coordinates><panel_attributes>lt=-&gt;
+SUCCESS</panel_attributes><additional_attributes>10;120;10;20;150;20</additional_attributes></element><element><id>Relation</id><coordinates><x>120</x><y>317</y><w>176</w><h>253</h></coordinates><panel_attributes>lt=-&gt;
+FAILURE</panel_attributes><additional_attributes>10;10;10;210;140;210</additional_attributes></element></diagram>
