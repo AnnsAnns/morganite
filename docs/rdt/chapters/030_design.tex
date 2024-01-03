@@ -12,3 +12,18 @@ Um die Kommunikation mit anderen Teilnehmern des Netwerkes zu ermöglichen, wird
 Dieser lauscht auf einem Port und empfängt Verbindungsanfragen von anderen Teilnehmern.
 Diese werden dann in den Thread Pool übergeben, der die Verbindung dann in einem eigenen Thread behandelt.
 Der Socket Listener wird in einem eigenen Thread ausgeführt, damit die Anwendung nicht blockiert wird.
+
+\subsection{Socket Handler}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.8\textwidth]{images/sockethandler.png}
+\caption{Socket Handler}
+\label{fig:SocketHandler}
+\end{figure}
+
+Der Socket Handler ist für die Kommunikation mit einem anderen Teilnehmer zuständig, spezifisch für der Empfangen von Nachrichten.
+Er wird vom Socket Listener in einem eigenen Thread innerhalb des Thread Pools ausgeführt. 
+Dabei wird unterschieden um welchen Typen es sich bei der Nachricht handelt und das Paket jeweils verifiziert mit CRC32.
+Bei einem Fehler wird das Paket verworfen und der Socket Handler beendet,
+ wobei vorher immer die Verbindung aus der Routing Tabelle entfernt wird.
