@@ -1,1 +1,34 @@
 \section{Anforderungen}
+
+\begin{tabular}{|c|p{13.5cm}|}
+\hline
+Requirement Nr. & Beschreibung
+\\ \hline
+
+REQ\_1 & Der Client erfüllt die Vorgaben des Chatprotokolls zur Kommunikation mit anderen Clients\\
+\hline
+REQ\_2 & Der Client muss mindestens per Terminal als einfachstes Interface bedienbar sein \\
+\hline
+REQ\_3 & Der Client muss ein\- und ausschaltbar sein\\
+\hline
+REQ\_4 & Der Client muss einen 3 Zeichen langen, eindeutigen Namen zur Kommunikation mit anderen Benutzern beim Start vom Benutzer bekommen\\
+\hline
+REQ\_5 & Der Client muss Verbindungen zu anderen Clients, die das Chatprotokoll erfüllen, aufbauen können\\
+\hline
+REQ\_6 & Die Verbindungen zu anderen Clients muss per IPv4 und über TCP Sockets geschehen\\
+\hline
+REQ\_7 & Der Client muss Nachrichten an verfügbaren Clients senden können\\
+\hline
+REQ\_8 & Der Client muss Chatnachrichten von verfügbaren Clients empfangen und diese im Terminal zusammen mit dem Sender ausgeben\\
+\hline
+REQ\_9 & Der Client muss alle verfügbaren Clienten ausgeben können\\
+\hline
+REQ\_10 & Der Client muss an andere Clients addressierte Nachrichten an verbundene Clients weiterleiten können\\
+\hline
+REQ\_11 & Der Client muss eine Routingtabelle nach Vorgaben des Chatprotokolls pflegen um Kommunikation zu nicht direkt verbundenen Client zu ermöglichen\\
+\hline
+REQ\_12 & Der Client muss alle 15 Sekunden Routingupdates(siehe Chatprotokoll) nach Vorgaben des Chatprotokolls an verbundene Clients senden.\\
+\hline
+REQ\_13 & Der Client muss die Integrität von Nachrichten mithilfe von CRC32 prüfen und bei Fehlern die Nachricht entsorgen\\
+\hline
+\end{tabular}
