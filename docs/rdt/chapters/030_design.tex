@@ -27,3 +27,19 @@ Er wird vom Socket Listener in einem eigenen Thread innerhalb des Thread Pools a
 Dabei wird unterschieden um welchen Typen es sich bei der Nachricht handelt und das Paket jeweils verifiziert mit CRC32.
 Bei einem Fehler wird das Paket verworfen und der Socket Handler beendet,
  wobei vorher immer die Verbindung aus der Routing Tabelle entfernt wird.
+
+ \subsection{TUI}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.8\textwidth]{images/tui.png}
+\caption{TUI}
+\label{fig:TUI}
+\end{figure}
+
+Die TUI ist für die Interaktion mit dem Benutzer zuständig. Sie nimmt sich jeweils eine Linieneingabe und verarbeitet diese.
+Dabei wird das erste Wort als Befehl interpretiert und die restlichen Wörter als Argumente.
+Die TUI ist in einem eigenen Thread, damit die Anwendung nicht blockiert wird.
+Bei einem Fehler durch falsche Eingabe wird eine Fehlermeldung ausgegeben und die TUI wartet auf die nächste Eingabe.
+Bei einem kritischen Fehler wird die Anwendung beendet, dies kann auch durch den Befehl \textit{exit} geschehen.
+Die Ausgabe aller Befehle erfolgt durch den Befehl \textit{help}.
