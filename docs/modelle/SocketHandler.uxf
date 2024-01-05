@@ -22,7 +22,8 @@ PACKET_FAULTY</panel_attributes><additional_attributes>40;50;40;20;60;20;60;50</
 CONNECTION
 _DROPPED</panel_attributes><additional_attributes>10;10;380;10;380;410;20;410</additional_attributes></element><element><id>UMLState</id><coordinates><x>32</x><y>251</y><w>187</w><h>77</h></coordinates><panel_attributes>Handle Routing Update
 --
-entry: updateRoutingTable()</panel_attributes><additional_attributes></additional_attributes></element><element><id>Relation</id><coordinates><x>208</x><y>284</y><w>165</w><h>33</h></coordinates><panel_attributes>lt=-&gt;</panel_attributes><additional_attributes>130;10;10;10</additional_attributes></element><element><id>Relation</id><coordinates><x>450</x><y>130</y><w>407</w><h>308</h></coordinates><panel_attributes>lt=-&gt;
+entry: updateRoutingTable()</panel_attributes><additional_attributes></additional_attributes></element><element><id>Relation</id><coordinates><x>208</x><y>273</y><w>165</w><h>44</h></coordinates><panel_attributes>lt=-&gt;
+   ROUTING_PACKET</panel_attributes><additional_attributes>130;20;10;20</additional_attributes></element><element><id>Relation</id><coordinates><x>450</x><y>130</y><w>407</w><h>308</h></coordinates><panel_attributes>lt=-&gt;
 SUCCESSS
 cbase=ru</panel_attributes><additional_attributes>20;260;290;260;290;10;10;10</additional_attributes></element><element><id>Relation</id><coordinates><x>120</x><y>119</y><w>187</w><h>154</h></coordinates><panel_attributes>lt=-&gt;
 SUCCESS</panel_attributes><additional_attributes>10;120;10;20;150;20</additional_attributes></element><element><id>Relation</id><coordinates><x>120</x><y>317</y><w>176</w><h>253</h></coordinates><panel_attributes>lt=-&gt;

@@ -43,3 +43,31 @@ Die TUI ist in einem eigenen Thread, damit die Anwendung nicht blockiert wird.
 Bei einem Fehler durch falsche Eingabe wird eine Fehlermeldung ausgegeben und die TUI wartet auf die nächste Eingabe.
 Bei einem kritischen Fehler wird die Anwendung beendet, dies kann auch durch den Befehl \textit{exit} geschehen.
 Die Ausgabe aller Befehle erfolgt durch den Befehl \textit{help}.
+
+\newpage
+\subsection{Routingtabelle}
+Die Routingtabelle speichert Informationen zu allen verfügbaren Clienten:
+\\
+\begin{center}
+\begin{tabular}{|c|c|c|c|c|c|c|}
+\hline
+info\_source & destination & ip & port & hops & ttl & dont\_expire
+\\ \hline
+\end{tabular}
+\end{center}
+\begin{itemize}
+    \item \textbf{info\_source:} Die Quelle eines Eintrags und damit der nächste Hop für Pakete auf der Route zur destination.
+    \item \textbf{destination:} 
+    \item \textbf{ip:} Die IP Adresse der destination wenn diese verbunden ist oder des nächsten Hops.  
+    \item \textbf{port:} Der Port der destination wenn diese verbunden ist oder des nächsten Hops.
+    \item \textbf{hops:} die Länge der Route zur destination in Clients an/über die Pakete gesendet werden müssen.
+    \item \textbf{ttl:} Die Lebenszeit eines Eintrags beginnend mit 30. 
+    \item \textbf{dont\_expire:} Wenn dieser boolean true ist läuft der Eintrag nicht ab, wird also nicht aus der Routingtabelle entfernt.
+\end{itemize}
+Einmal die Sekunde werden alle Einträge mit einer TTL niedriger als 1 und ohne dont\_expire aus der Routingtabelle entfernt und die TTL aller Einträge um 1 reduziert.
+
+\noindent Neue Einträge werden der Routingtabelle bei neuen Verbindungen oder bei Routingupdates hinzugefügt oder aktualisiert und die Routingtabelle so möglichst aktuell gehalten.
+
+\noindent Der Client sendet Routingupdates alle 15 Sekunden an verbundene Clienten und bekommt in einem 15 Sekunden Takt von verbundenen Clienten Routingupdates.
+
+\textbf{FSMs für diese beiden Loops? Die sind kinda banal.}
