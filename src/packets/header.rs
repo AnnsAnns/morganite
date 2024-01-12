@@ -10,7 +10,6 @@ pub struct BaseHeader {
     ttl: u8,
     target: String,
     source: String,
-    hops: u8,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, TryFromPrimitive, IntoPrimitive)]
@@ -48,8 +47,7 @@ impl BaseHeader {
         packet_type: PacketType,
         ttl: u8,
         target: String,
-        source: String,
-        hops: u8,
+        source: String
     ) -> BaseHeader {
         let mut truncated_target = target.clone();
         let mut truncated_source = source.clone();
@@ -69,7 +67,6 @@ impl BaseHeader {
             ttl,
             target: truncated_target,
             source: truncated_source,
-            hops,
         }
     }
 
@@ -82,7 +79,6 @@ impl BaseHeader {
         bytes.put_u8(self.ttl);
         bytes.put(self.target.as_bytes());
         bytes.put(self.source.as_bytes());
-        bytes.put_u8(self.hops);
         bytes
     }
 
@@ -113,14 +109,12 @@ impl BaseHeader {
         let ttl = bytes[1];
         let target = String::from_utf8(bytes[2..5].to_vec()).unwrap();
         let source = String::from_utf8(bytes[5..8].to_vec()).unwrap();
-        let hops = bytes[8];
 
         Some(BaseHeader {
             packet_type,
             ttl,
             target,
             source,
-            hops,
         })
     }
 }
@@ -136,7 +130,6 @@ mod tests {
             0,
             String::from("ABC"),
             String::from("DEF"),
-            0,
         );
         let bytes = header.to_bytes();
         let header = BaseHeader::from_bytes(bytes).unwrap();
@@ -153,7 +146,6 @@ mod tests {
             0,
             String::from("ABCDEF"),
             String::from("DEFGHI"),
-            0,
         );
         let bytes = header.to_bytes();
         let header = BaseHeader::from_bytes(bytes).unwrap();
