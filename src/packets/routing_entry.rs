@@ -5,7 +5,7 @@ use log::{warn, debug};
 
 pub const TTL: u8 = 30;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct RoutingEntry {
     pub info_source: String,
     pub destination: String,
@@ -47,6 +47,10 @@ impl RoutingEntry {
         }
     }
 
+    pub fn set_port(&mut self, port: u16) {
+        self.port = port;
+    }
+
     pub fn set_ttl(&mut self, ttl: u8) {
         self.ttl = ttl;
     }
@@ -61,16 +65,16 @@ impl RoutingEntry {
 
     pub fn to_bytes(&self) -> BytesMut {
         let mut bytes = BytesMut::with_capacity(1024);
-        debug!("Byte Translation: {} to {:#?}", self.info_source.clone(), self.info_source.clone().as_bytes());
+        //debug!("Byte Translation: {} to {:#?}", self.info_source.clone(), self.info_source.clone().as_bytes());
         bytes.put(self.info_source.as_bytes());
-        debug!("Byte Translation: {} to {:#?}", self.destination.clone(), self.destination.clone().as_bytes());
+        //debug!("Byte Translation: {} to {:#?}", self.destination.clone(), self.destination.clone().as_bytes());
         bytes.put(self.destination.as_bytes());
-        debug!("Byte Translation: {} to {:#?}", self.port.clone(), self.port.to_be_bytes());
+        //debug!("Byte Translation: {} to {:#?}", self.port.clone(), self.port.to_be_bytes());
         bytes.put_u16(self.port);
-        debug!("Byte Translation: {} to {:#?}", self.hops.clone(), self.hops.clone());
+        //debug!("Byte Translation: {} to {:#?}", self.hops.clone(), self.hops.clone());
         bytes.put_u8(self.hops);
 
-        debug!("Routing Entry Bytes: {:#?}", bytes);
+        //debug!("Routing Entry Bytes: {:#?}", bytes);
         bytes
     }
 

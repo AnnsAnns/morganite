@@ -29,19 +29,20 @@ pub type RoutingTableType = Arc<Mutex<Routingtable>>;
 #[tokio::main]
 async fn main() {
     // Init logger
-    simple_logger::SimpleLogger::new().with_level(log::LevelFilter::Info).env().init().unwrap();
+    simple_logger::SimpleLogger::new().with_level(log::LevelFilter::Debug).env().init().unwrap();
     let port = parse_port();
+    let own_name = parse_name();
 
     println!(
         "{}{}{}{}",
         "·͙⁺˚*•̩̩͙✩•̩̩͙*˚⁺‧͙⁺˚*•̩̩͙✩•̩̩͙*˚⁺‧͙⁺˚*•̩̩͙✩•̩̩͙*˚⁺‧͙".bright_green(),
-        "Merry".bright_red().bold().italic().underline(),
-        " X’mas".bright_white().bold().italic().underline(),
+        "Morg".bright_red().bold().italic().underline(),
+        "anite".bright_white().bold().italic().underline(),
         "·͙⁺˚*•̩̩͙✩•̩̩͙*˚⁺‧͙⁺˚*•̩̩͙✩•̩̩͙*˚⁺‧͙⁺˚*•̩̩͙✩•̩̩͙*˚⁺‧͙".bright_green()
     );
 
     let morganite = Arc::new(Mutex::new(Morganite::new(
-        parse_name(),
+        own_name.clone(),
         port.to_string(),
         LISTEN_ADDR.to_string(),
     )));
@@ -50,7 +51,7 @@ async fn main() {
         .await
         .unwrap();
 
-    let connection_handler = Listener::new(morganite.clone(), listener);
+    let connection_handler = Listener::new(morganite.clone(), listener, own_name);
 
     let mut tui = tui::Tui::new(morganite.clone());
 

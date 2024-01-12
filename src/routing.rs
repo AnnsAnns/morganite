@@ -16,6 +16,14 @@ impl Routingtable {
         }
     }
 
+    pub fn reset_ttl_direct_peer(&mut self, src: String, dest: String) {
+        for entry in &mut self.entries {
+            if entry.destination == dest && entry.info_source == src {
+                entry.ttl = TTL;
+            }
+        }
+    }
+
     pub fn reset_ttl(&mut self, source: String) {
         for entry in &mut self.entries {
             if entry.info_source == source {
@@ -24,9 +32,21 @@ impl Routingtable {
         }
     }
 
-    pub fn reset_ttl_for_target(&mut self, target: String) {
+    pub fn reset_ttl_for_target(&mut self, source: String) {
+        debug!("Resetting TTL for target {}", source);
         for entry in &mut self.entries {
-            if entry.destination == target {
+            debug!("{} {}", entry.info_source, entry.destination);
+            if entry.info_source == source {
+                entry.ttl = TTL;
+            }
+        }
+    }
+
+    pub fn reset_ttl_for_ip_and_port(&mut self, ip: String, port: u16) {
+        debug!("Resetting TTL via IP for target {} : {}", ip, port);
+        for entry in &mut self.entries {
+            debug!("{} {}", entry.info_source, entry.destination);
+            if entry.ip == ip && entry.port == port {
                 entry.ttl = TTL;
             }
         }
@@ -63,11 +83,8 @@ impl Routingtable {
         );
 
         if let Some(existing_entry) = self.get_entry(entry.destination.clone()) {
-            if existing_entry.hops > entry.hops {
-                debug!("Updating entry for {}", entry.destination);
-                self.entries.retain(|e| e.destination != entry.destination);
-                self.entries.push(entry);
-            }
+            debug!("Updating entry for {}", entry.destination);
+            self.entries.push(entry);
         } else {
             self.entries.push(entry);
         }
@@ -87,9 +104,18 @@ impl Routingtable {
      * Returns the entry with the given destination
      */
     pub fn get_entry(&self, destination: String) -> Option<&RoutingEntry> {
-        self.entries
-            .iter()
-            .find(|&entry| entry.destination == destination)
+        // Find the result with the lowest hops
+        let mut lowest_hops = 255;
+        let mut result: Option<&RoutingEntry> = None;
+
+        for entry in &self.entries {
+            if entry.destination == destination && entry.hops < lowest_hops {
+                lowest_hops = entry.hops;
+                result = Some(entry);
+            }
+        }
+
+        result
     }
 
     pub async fn remove_entry(&mut self, destination: String) {
