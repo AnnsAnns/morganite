@@ -19,14 +19,16 @@ pub struct Listener {
     morganite: Arc<Mutex<Morganite>>,
     listener: TcpListener,
     task_pool: Pool,
+    own_name: String,
 }
 
 impl Listener {
-    pub async fn new(morganite: Arc<Mutex<Morganite>>, listener: TcpListener) -> Listener {
+    pub async fn new(morganite: Arc<Mutex<Morganite>>, listener: TcpListener, own_name: String) -> Listener {
         Listener {
             morganite,
             listener,
             task_pool: Pool::bounded(TASK_POOL_SIZE),
+            own_name,
         }
     }
 
@@ -60,6 +62,7 @@ impl Listener {
                         socket,
                         addr.to_string(),
                         own_addr,
+                        self.own_name.clone(),
                     );
                     self.task_pool.spawn(async move {
                         handler.process().await;

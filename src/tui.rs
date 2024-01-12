@@ -79,7 +79,9 @@ impl Tui {
                     }
                 };
                 info!("Disconnecting from {}", destination);
-            } else if line.starts_with("show_routingtable") || line.starts_with("list_routingtable")
+            } else if line.starts_with("show_routingtable")
+                || line.starts_with("list_routingtable")
+                || line.starts_with("srt")
             {
                 self.morganite.lock().await.print_routingtable().await;
             } else if line.starts_with("force_update") {

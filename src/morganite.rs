@@ -189,6 +189,10 @@ impl Morganite {
         let routingtable_bytes = bytes[BASE_HEADER_SIZE..].to_vec();
         let total_entries = routingtable_bytes[0];
         let mut offset = 1;
+
+        // Update ttl of source
+        self.routingtable.lock().await.reset_ttl_direct_peer(self.own_name.clone(), header.get_source());
+
         for _ in 0..total_entries {
             let entry_bytes = routingtable_bytes[offset..offset + 9].to_vec();
             debug!("Entry bytes: {:#?}", entry_bytes);

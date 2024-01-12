@@ -25,15 +25,23 @@ pub struct SocketReadHandler {
     own_addr: String,
     color_fg: Color,
     color_bg: Color,
+    own_name: String,
 }
 
 impl SocketReadHandler {
-    pub fn new(morganite: Arc<Mutex<Morganite>>, socket: Arc<Mutex<SocketStream>>, peer_addr: String, own_addr: String) -> SocketReadHandler {
+    pub fn new(
+        morganite: Arc<Mutex<Morganite>>,
+        socket: Arc<Mutex<SocketStream>>,
+        peer_addr: String,
+        own_addr: String,
+        own_name: String,
+    ) -> SocketReadHandler {
         SocketReadHandler {
             morganite,
             socket,
             target_name: "".to_string(),
             peer_addr,
+            own_name,
             own_addr,
             color_fg: Color::White,
             color_bg: Color::Green,
@@ -94,15 +102,6 @@ impl SocketReadHandler {
                         continue;
                     }
 
-                    // Reset ttl to 30
-                    self.morganite
-                        .lock()
-                        .await
-                        .routingtable
-                        .lock()
-                        .await
-                        .reset_ttl_for_target(header.get_source());
-
                     match msg_type {
                         PacketType::Connection => {
                             // Connection message
@@ -117,21 +116,21 @@ impl SocketReadHandler {
                                     .to_vec()
                                     .as_slice(), // Convert Vec<u8> to &[u8]
                             ));
-                    
+
                             let mut morganite = self.morganite.lock().await;
                             // As this client directly connected to us we can ignore other routing entries to that client
                             morganite.remove_entry(connection_packet.name.clone()).await;
-                    
+
                             let peer_addr = self.peer_addr.clone().to_string();
                             let full_addr = peer_addr.split(':').collect::<Vec<&str>>();
                             let ip = full_addr.first().unwrap().to_string();
                             let _port = full_addr.get(1).unwrap().parse::<u16>().unwrap();
                             self.target_name = connection_packet.name.clone();
-                    
+
                             debug!("Adding routing entry for {}", connection_packet.name);
-                    
+
                             let own_name = morganite.get_own_name();
-                    
+
                             morganite
                                 .routingtable_add(RoutingEntry::new(
                                     own_name,
@@ -142,6 +141,12 @@ impl SocketReadHandler {
                                 ))
                                 .await;
                             debug!("Added routing entry for {}", connection_packet.name);
+
+                            if connection_packet.is_first {
+                                morganite
+                                .send_connectionpacket(connection_packet.name.clone(), false)
+                                .await;
+                            }
                         }
                         PacketType::Routing => {
                             // Routing message
@@ -173,12 +178,16 @@ impl SocketReadHandler {
                                     .to_vec()
                                     .as_slice(), // Convert Vec<u8> to &[u8]
                             ));
-                    
-                            println!("📥 {}",
-                                format!("From @{}:\n{}",
-                                base_header.get_source(),
-                                message_packet.get_message()
-                                ).color(self.color_fg).on_color(self.color_bg)
+
+                            println!(
+                                "📥 {}",
+                                format!(
+                                    "From @{}:\n{}",
+                                    base_header.get_source(),
+                                    message_packet.get_message()
+                                )
+                                .color(self.color_fg)
+                                .on_color(self.color_bg)
                             );
                         }
                     }
@@ -193,8 +202,10 @@ impl SocketReadHandler {
                         self.morganite
                             .lock()
                             .await
-                            .remove_entry(self.target_name.clone())
-                            .await;
+                            .routingtable
+                            .lock()
+                            .await
+                            .clear_from(self.target_name.clone());
                     }
                     return;
                 }

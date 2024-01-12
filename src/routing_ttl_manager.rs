@@ -2,7 +2,7 @@
 
 
 
-use crate::{RoutingTableType};
+use crate::RoutingTableType;
 
 
 
