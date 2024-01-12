@@ -135,11 +135,13 @@ impl Routingtable {
         total
     }
 
-    pub fn to_bytes(&self, poise: String, _own_ip: String, _own_port: u16, _own_name: String) -> BytesMut {
+    pub fn to_bytes(&self, poise: String, _own_ip: String, own_port: u16, _own_name: String) -> BytesMut {
         let mut bytes = BytesMut::with_capacity(1024);
         bytes.put_u8(self.total_entries(poise.clone()) as u8);
         for entry in &self.entries {
-            bytes.put(entry.to_bytes());
+            let mut b_entry = entry.clone();
+            b_entry.set_port(own_port);
+            bytes.put(b_entry.to_bytes());
         }
         bytes
     }
