@@ -3,6 +3,7 @@ pub mod socket_read_handler;
 
 use crate::listener::socket::SocketStream;
 use crate::Morganite;
+use tokio_task_pool::Pool;
 
 use colored::Colorize;
 use log::{debug, warn};
@@ -12,9 +13,12 @@ use std::sync::Arc;
 use tokio::net::TcpListener;
 use tokio::sync::Mutex;
 
+const TASK_POOL_SIZE: usize = 20;
+
 pub struct Listener {
     morganite: Arc<Mutex<Morganite>>,
     listener: TcpListener,
+    task_pool: Pool,
 }
 
 impl Listener {
@@ -22,6 +26,7 @@ impl Listener {
         Listener {
             morganite,
             listener,
+            task_pool: Pool::bounded(TASK_POOL_SIZE),
         }
     }
 
@@ -56,9 +61,9 @@ impl Listener {
                         addr.to_string(),
                         own_addr,
                     );
-                    tokio::spawn(async move {
+                    self.task_pool.spawn(async move {
                         handler.process().await;
-                    });
+                    }).await.unwrap();
                 }
                 Err(e) => {
                     warn!("Client connection failed = {:?}", e);
