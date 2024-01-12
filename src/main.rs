@@ -20,6 +20,8 @@ mod tui;
 use arg_parsing::{parse_name, parse_port};
 use routing::Routingtable;
 
+use crate::arg_parsing::parse_debug;
+
 const LISTEN_ADDR: &str = "127.0.0.1";
 const ROUTING_UPDATE_INTERVAL: u64 = 15;
 
@@ -29,7 +31,8 @@ pub type RoutingTableType = Arc<Mutex<Routingtable>>;
 #[tokio::main]
 async fn main() {
     // Init logger
-    simple_logger::SimpleLogger::new().with_level(log::LevelFilter::Info).env().init().unwrap();
+    let log_level = if parse_debug() { log::LevelFilter::Debug } else { log::LevelFilter::Info };
+    simple_logger::SimpleLogger::new().with_level(log_level).env().init().unwrap();
     let port = parse_port();
     let own_name = parse_name();
 

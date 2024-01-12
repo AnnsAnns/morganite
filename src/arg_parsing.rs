@@ -33,3 +33,10 @@ pub fn parse_name() -> String {
         }
     }
 }
+
+pub fn parse_debug() -> bool {
+    match args().nth(3) {
+        Some(debug) => debug == "debug",
+        None => false,
+    }
+}

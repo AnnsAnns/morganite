@@ -12,3 +12,12 @@ d:
 
 e:
 	cargo run 12349 EEE
+
+adbg:
+	cargo run 12345 AAA debug
+
+bdbg:
+	cargo run 12346 BBB debug
+
+cdbg:
+	cargo run 12347 CCC debug
