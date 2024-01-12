@@ -78,6 +78,14 @@ impl RoutingEntry {
         bytes
     }
 
+    pub fn set_hops(&mut self, hops: u8) {
+        self.hops = hops;
+    }
+
+    pub fn set_ip(&mut self, ip: String) {
+        self.ip = ip;
+    }
+
     pub fn from_bytes(bytes: BytesMut, ip: String) -> RoutingEntry {
         debug!("Routing Entry Bytes: {:#?}", bytes);
         let info_source = String::from_utf8(bytes[0..3].to_vec()).unwrap();

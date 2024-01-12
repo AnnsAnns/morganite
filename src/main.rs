@@ -29,7 +29,7 @@ pub type RoutingTableType = Arc<Mutex<Routingtable>>;
 #[tokio::main]
 async fn main() {
     // Init logger
-    simple_logger::SimpleLogger::new().with_level(log::LevelFilter::Debug).env().init().unwrap();
+    simple_logger::SimpleLogger::new().with_level(log::LevelFilter::Info).env().init().unwrap();
     let port = parse_port();
     let own_name = parse_name();
 

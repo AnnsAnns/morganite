@@ -205,6 +205,12 @@ impl Morganite {
             {
                 continue;
             }
+
+            if entry.hops >= 16 {
+                debug!("Hops is too high, ignoring entry");
+                continue;
+            }
+
             self.routingtable_add(entry).await;
         }
     }
