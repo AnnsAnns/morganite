@@ -36,7 +36,7 @@ impl PacketType {
     }
 }
 
-pub const BASE_HEADER_SIZE: usize = 72 / 8;
+pub const BASE_HEADER_SIZE: usize = 64 / 8;
 
 impl BaseHeader {
     /**
