@@ -1,0 +1,25 @@
+name: RDT Compile Action
+
+# Only on push with changes to the following files
+on:
+  push:
+    paths:
+      - 'docs/rdt/**'
+      - '.github/workflows/rdt.yml'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up Git repository
+        uses: actions/checkout@v3
+      - name: Compile LaTeX document
+        uses: xu-cheng/latex-action@v3
+        with:
+          working_directory: docs/rdt/
+          root_file: RDT.tex
+      - name: Upload PDF file
+        uses: actions/upload-artifact@v3
+        with:
+          name: PDF
+          path: ./docs/rdt/RDT.pdf
