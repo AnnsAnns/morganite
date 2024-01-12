@@ -124,8 +124,7 @@ impl Morganite {
             PacketType::Routing,
             32,
             entry.destination.clone(),
-            self.own_name.clone(),
-            entry.hops,
+            self.own_name.clone()
         )
         .to_bytes();
 
@@ -248,8 +247,7 @@ impl Morganite {
             PacketType::Connection,
             32,
             entry.destination.clone(),
-            self.own_name.clone(),
-            entry.hops,
+            self.own_name.clone()
         );
         let connection_packet = 
             ConnectionPacket::new(self.own_name.clone(), self.own_port.clone().parse::<u16>().unwrap(), first).to_bytes()
@@ -324,8 +322,7 @@ impl Morganite {
             PacketType::Message,
             32,
             entry.destination.clone(),
-            self.own_name.clone(),
-            entry.hops,
+            self.own_name.clone()
         );
         let mut msg = BytesMut::with_capacity(1024);
         msg.put(header.to_bytes());
