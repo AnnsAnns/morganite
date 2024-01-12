@@ -15,10 +15,11 @@ impl MessagePacket {
 
     pub fn to_bytes(&self) -> BytesMut {
         let mut bytes = BytesMut::with_capacity(320);
+        bytes.put_u8(self.msg.len() as u8);
         bytes.put(self.msg.as_bytes());
         // Fill rest of bytes with 0 because our protocol asks for exactly 320 bytes
         // (Kinda stupid but whatever, we can't change it now)
-        for _ in 0..(320 - self.msg.len()) {
+        for _ in 0..(320 - self.msg.len()-1) {
             bytes.put_u8(0);
         }
         bytes
@@ -29,7 +30,8 @@ impl MessagePacket {
     }
 
     pub fn from_bytes(bytes: BytesMut) -> MessagePacket {
-        let msg = String::from_utf8(bytes[0..bytes.len()].to_vec()).unwrap().trim_end().to_string();
+        let msg_size: usize = bytes[0] as usize;
+        let msg = String::from_utf8(bytes[1..=msg_size].to_vec()).unwrap().trim_end().to_string();
 
         // Remove leading and trailing 0 bytes
         let msg = msg.trim_start_matches(char::from(0)).to_string();
