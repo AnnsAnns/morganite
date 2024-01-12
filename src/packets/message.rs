@@ -31,6 +31,10 @@ impl MessagePacket {
     pub fn from_bytes(bytes: BytesMut) -> MessagePacket {
         let msg = String::from_utf8(bytes[0..bytes.len()].to_vec()).unwrap().trim_end().to_string();
 
+        // Remove leading and trailing 0 bytes
+        let msg = msg.trim_start_matches(char::from(0)).to_string();
+        let msg = msg.trim_end_matches(char::from(0)).to_string();
+
         MessagePacket { msg }
     }
 }
