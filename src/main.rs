@@ -1,109 +1,200 @@
-use colored::Colorize;
-use listener::Listener;
-
-use morganite::Morganite;
-
-use std::collections::HashMap;
-use std::sync::Arc;
-use std::time::Duration;
 use tokio::net::{TcpListener, TcpStream};
-use tokio::sync::Mutex;
+use tokio::sync::{mpsc, Mutex};
+use tokio_stream::StreamExt;
+use tokio_util::codec::{Framed, LinesCodec};
 
-mod arg_parsing;
-mod listener;
-mod morganite;
-mod packets;
-mod routing;
-mod routing_ttl_manager;
-mod tui;
-
-use arg_parsing::{parse_name, parse_port};
-use routing::Routingtable;
-
-use crate::arg_parsing::parse_debug;
-
-const LISTEN_ADDR: &str = "127.0.0.1";
-const ROUTING_UPDATE_INTERVAL: u64 = 15;
-
-pub type ConnectionsTableType = Arc<Mutex<HashMap<String, TcpStream>>>;
-pub type RoutingTableType = Arc<Mutex<Routingtable>>;
+use futures::SinkExt;
+use std::collections::HashMap;
+use std::env;
+use std::error::Error;
+use std::io;
+use std::net::SocketAddr;
+use std::sync::Arc;
 
 #[tokio::main]
-async fn main() {
-    // Init logger
-    let log_level = if parse_debug() { log::LevelFilter::Debug } else { log::LevelFilter::Info };
-    simple_logger::SimpleLogger::new().with_level(log_level).env().init().unwrap();
-    let port = parse_port();
-    let own_name = parse_name();
+async fn main() -> Result<(), Box<dyn Error>> {
+    // construct a subscriber that prints formatted traces to stdout
+    let subscriber = tracing_subscriber::FmtSubscriber::new();
+    // use that subscriber to process traces emitted after this point
+    tracing::subscriber::set_global_default(subscriber)?;
 
-    println!(
-        "{}{}{}{}",
-        "·͙⁺˚*•̩̩͙✩•̩̩͙*˚⁺‧͙⁺˚*•̩̩͙✩•̩̩͙*˚⁺‧͙⁺˚*•̩̩͙✩•̩̩͙*˚⁺‧͙".bright_green(),
-        "Morg".bright_red().bold().italic().underline(),
-        "anite".bright_white().bold().italic().underline(),
-        "·͙⁺˚*•̩̩͙✩•̩̩͙*˚⁺‧͙⁺˚*•̩̩͙✩•̩̩͙*˚⁺‧͙⁺˚*•̩̩͙✩•̩̩͙*˚⁺‧͙".bright_green()
-    );
+    // Create the shared state. This is how all the peers communicate.
+    //
+    // The server task will hold a handle to this. For every new client, the
+    // `state` handle is cloned and passed into the task that processes the
+    // client connection.
+    let state = Arc::new(Mutex::new(Shared::new()));
 
-    let morganite = Arc::new(Mutex::new(Morganite::new(
-        own_name.clone(),
-        port.to_string(),
-        LISTEN_ADDR.to_string(),
-    )));
+    let addr = env::args()
+        .nth(1)
+        .unwrap_or_else(|| "127.0.0.1:6142".to_string());
 
-    let listener = TcpListener::bind(format!("{}:{}", LISTEN_ADDR, port))
-        .await
-        .unwrap();
+    // Bind a TCP listener to the socket address.
+    //
+    // Note that this is the Tokio TcpListener, which is fully async.
+    let listener = TcpListener::bind(&addr).await?;
 
-    let connection_handler = Listener::new(morganite.clone(), listener, own_name);
-
-    let mut tui = tui::Tui::new(morganite.clone());
-
-    // Spawn connection handler
-    let _connectionthread = tokio::spawn(async move {
-        connection_handler.await.listen().await;
-    });
-
-    // Spawn tui
-    let _tuithread = tokio::spawn(async move {
-        tui.handle_console().await;
-    });
-
-    // Add self to routing table
-    morganite.lock().await.add_self_to_routingtable().await;
-
-    // Start routing table TTL manager
-    let mut routing_ttl_manager =
-        routing_ttl_manager::RoutingTTLManager::new(morganite.lock().await.get_routingtable());
-    let _routing_ttl_manager_thread = tokio::spawn(async move {
-        routing_ttl_manager.start().await;
-    });
-
-    println!(
-        "{}",
-        format!(
-            "{} {} {} {} {}",
-            "R".bright_cyan(),
-            "E".bright_magenta(),
-            "A".bright_white(),
-            "D".bright_magenta(),
-            "Y".bright_cyan()
-        )
-        .bold()
-        .on_black()
-        .underline()
-        .italic()
-    );
-
-    println!("{}", format!("{} Use {} to list commands",
-        "(╭ರ_•́)".bold(),
-        "help".bold().underline().bright_yellow(),
-    ).yellow());
+    tracing::info!("server running on {}", addr);
 
     loop {
-        tokio::time::sleep(Duration::from_secs(ROUTING_UPDATE_INTERVAL)).await;
-        morganite.lock().await.broadcast_routingtable().await;
+        // Asynchronously wait for an inbound TcpStream.
+        let (stream, addr) = listener.accept().await?;
+
+        // Clone a handle to the `Shared` state for the new connection.
+        let state = Arc::clone(&state);
+
+        // Spawn our handler to be run asynchronously.
+        tokio::spawn(async move {
+            tracing::debug!("accepted connection");
+            if let Err(e) = process(state, stream, addr).await {
+                tracing::info!("an error occurred; error = {:?}", e);
+            }
+        });
+    }
+}
+
+/// Shorthand for the transmit half of the message channel.
+type Tx = mpsc::UnboundedSender<String>;
+
+/// Shorthand for the receive half of the message channel.
+type Rx = mpsc::UnboundedReceiver<String>;
+
+/// Data that is shared between all peers in the chat server.
+///
+/// This is the set of `Tx` handles for all connected clients. Whenever a
+/// message is received from a client, it is broadcasted to all peers by
+/// iterating over the `peers` entries and sending a copy of the message on each
+/// `Tx`.
+struct Shared {
+    peers: HashMap<SocketAddr, Tx>,
+}
+
+/// The state for each connected client.
+struct Peer {
+    /// The TCP socket wrapped with the `Lines` codec, defined below.
+    ///
+    /// This handles sending and receiving data on the socket. When using
+    /// `Lines`, we can work at the line level instead of having to manage the
+    /// raw byte operations.
+    lines: Framed<TcpStream, LinesCodec>,
+
+    /// Receive half of the message channel.
+    ///
+    /// This is used to receive messages from peers. When a message is received
+    /// off of this `Rx`, it will be written to the socket.
+    rx: Rx,
+}
+
+impl Shared {
+    /// Create a new, empty, instance of `Shared`.
+    fn new() -> Self {
+        Shared {
+            peers: HashMap::new(),
+        }
     }
 
-    // Wait for exit
-    // join!(connectionthread, tuithread).0.unwrap();
+    /// Send a `LineCodec` encoded message to every peer, except
+    /// for the sender.
+    async fn broadcast(&mut self, sender: SocketAddr, message: &str) {
+        for peer in self.peers.iter_mut() {
+            if *peer.0 != sender {
+                let _ = peer.1.send(message.into());
+            }
+        }
+    }
+}
+
+impl Peer {
+    /// Create a new instance of `Peer`.
+    async fn new(
+        state: Arc<Mutex<Shared>>,
+        lines: Framed<TcpStream, LinesCodec>,
+    ) -> io::Result<Peer> {
+        // Get the client socket address
+        let addr = lines.get_ref().peer_addr()?;
+
+        // Create a channel for this peer
+        let (tx, rx) = mpsc::unbounded_channel();
+
+        // Add an entry for this `Peer` in the shared state map.
+        state.lock().await.peers.insert(addr, tx);
+
+        Ok(Peer { lines, rx })
+    }
+}
+
+/// Process an individual chat client
+async fn process(
+    state: Arc<Mutex<Shared>>,
+    stream: TcpStream,
+    addr: SocketAddr,
+) -> Result<(), Box<dyn Error>> {
+    let mut lines = Framed::new(stream, LinesCodec::new());
+
+    // Send a prompt to the client to enter their username.
+    lines.send("Please enter your username:").await?;
+
+    // Read the first line from the `LineCodec` stream to get the username.
+    let username = match lines.next().await {
+        Some(Ok(line)) => line,
+        // We didn't get a line so we return early here.
+        _ => {
+            tracing::error!("Failed to get username from {}. Client disconnected.", addr);
+            return Ok(());
+        }
+    };
+
+    // Register our peer with state which internally sets up some channels.
+    let mut peer = Peer::new(state.clone(), lines).await?;
+
+    // A client has connected, let's let everyone know.
+    {
+        let mut state = state.lock().await;
+        let msg = format!("{} has joined the chat", username);
+        tracing::info!("{}", msg);
+        state.broadcast(addr, &msg).await;
+    }
+
+    // Process incoming messages until our stream is exhausted by a disconnect.
+    loop {
+        tokio::select! {
+            // A message was received from a peer. Send it to the current user.
+            Some(msg) = peer.rx.recv() => {
+                peer.lines.send(&msg).await?;
+            }
+            result = peer.lines.next() => match result {
+                // A message was received from the current user, we should
+                // broadcast this message to the other users.
+                Some(Ok(msg)) => {
+                    let mut state = state.lock().await;
+                    let msg = format!("{}: {}", username, msg);
+
+                    state.broadcast(addr, &msg).await;
+                }
+                // An error occurred.
+                Some(Err(e)) => {
+                    tracing::error!(
+                        "an error occurred while processing messages for {}; error = {:?}",
+                        username,
+                        e
+                    );
+                }
+                // The stream has been exhausted.
+                None => break,
+            },
+        }
+    }
+
+    // If this section is reached it means that the client was disconnected!
+    // Let's let everyone still connected know about it.
+    {
+        let mut state = state.lock().await;
+        state.peers.remove(&addr);
+
+        let msg = format!("{} has left the chat", username);
+        tracing::info!("{}", msg);
+        state.broadcast(addr, &msg).await;
+    }
+
+    Ok(())
 }
