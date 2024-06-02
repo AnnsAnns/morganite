@@ -1,7 +1,7 @@
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::{mpsc, Mutex};
 use tokio_stream::StreamExt;
-use tokio_util::codec::{Framed, LinesCodec};
+use tokio_util::codec::{Framed, FramedRead, LinesCodec};
 
 use futures::SinkExt;
 use std::collections::HashMap;
@@ -10,6 +10,8 @@ use std::error::Error;
 use std::io;
 use std::net::SocketAddr;
 use std::sync::Arc;
+
+
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
@@ -36,6 +38,17 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     tracing::info!("server running on {}", addr);
 
+    //TUI Task
+    //create a Task that runs the TUI code with access to Shared to allow the creation of new connections
+    let state_tui = Arc::clone(&state);
+    tokio::spawn(async move {
+        tracing::debug!("created TUI task");
+        if let Err(e) = handle_console(state_tui).await {
+            tracing::info!("an error occurred; error = {:?}", e);
+        }
+    });
+
+    //Loop accepting new connections from other clients creating a task for each of them handling their messages
     loop {
         // Asynchronously wait for an inbound TcpStream.
         let (stream, addr) = listener.accept().await?;
@@ -45,7 +58,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
         // Spawn our handler to be run asynchronously.
         tokio::spawn(async move {
-            tracing::debug!("accepted connection");
+            tracing::info!("accepted connection to {}",addr);
             if let Err(e) = process(state, stream, addr).await {
                 tracing::info!("an error occurred; error = {:?}", e);
             }
@@ -118,8 +131,159 @@ impl Peer {
 
         // Add an entry for this `Peer` in the shared state map.
         state.lock().await.peers.insert(addr, tx);
-
+        tracing::info!("added address: {}",addr);
         Ok(Peer { lines, rx })
+    }
+}
+///TUI handling the users console inputs
+async fn handle_console( state: Arc<Mutex<Shared>>) -> Result<(), Box<dyn Error>>{
+    // TODO
+    let stdin = tokio::io::stdin();
+    let mut reader = FramedRead::new(stdin, LinesCodec::new());
+
+    let addr = "127.0.0.1:4444".parse::<SocketAddr>()?;
+
+    // Create a channel for this peer
+    let (tx, mut rx) = mpsc::unbounded_channel();
+
+    // Add an entry for this `Peer` in the shared state map.
+    state.lock().await.peers.insert(addr, tx);
+    loop {
+        tokio::select! {
+            //another async task has a message to be send to the user
+            Some(msg) = rx.recv() => {
+                //display message
+                tracing::info!("{}", msg);
+            }
+            //get the next line whenever theres a new one:
+            result = reader.next() => match result {
+                Some(Ok(line)) => {
+                    //we got a new line on stdin, check for commands:
+                    let line = line.trim();
+                    //check line for commands:
+                    if line.starts_with("exit") {
+                        //exit the program
+                    } else if line.starts_with("help") {
+                        tracing::info!(
+                        "Available commands:
+                        exit,
+                        help,
+                        connect <IP> <port>,
+                        contacts,
+                        msg <IP> <port> <message>,"
+                        );
+                    } else if line.starts_with("connect") {
+                        // connect to specified client
+                        //get ip and port
+                        let mut args = line.split_whitespace();
+                        args.next();
+                        let ip = match args.next() {
+                            Some(ip) => ip,
+                            None => {
+                                tracing::error!("Missing ip");
+                                continue;
+                            }
+                        };
+                        let port = match args.next() {
+                            Some(port) => port,
+                            None => {
+                                tracing::error!("Missing port");
+                                continue;
+                            }
+                        };
+                        //parse to SocketAddr
+                        let destination = format!("{}:{}",ip,port);
+                        let addr = match destination.parse::<SocketAddr>() {
+                            Ok(socket) => socket,
+                            Err(e) => {
+                                tracing::error!("Error parsing destination: {}",e);
+                                continue;
+                            }
+                        };
+                        //create tcp stream
+                        let stream = match TcpStream::connect(addr).await {
+                            Ok(stream) => stream,
+                        Err(e) => {
+                            tracing::error!("Failed to connect to {}: {}", destination, e);
+                            continue;
+                            }   
+                        };
+                        // Clone a handle to the `Shared` state for the new connection.
+                        let state = Arc::clone(&state);
+                        //spawn asynchronous handler
+                        tokio::spawn(async move {
+                        tracing::info!("connected to: {}",addr);
+                        if let Err(e) = process(state, stream, addr).await {
+                            tracing::info!("an error occurred; error = {:?}", e);
+                        }
+                    });
+                
+                    } else if line.starts_with("contacts") {
+                        // diplay the routing table
+                        {
+                            let mut lock = state.lock().await;
+                            for peer in lock.peers.iter_mut() {
+                                tracing::info!("connected to: {}",peer.0);
+                            }
+                        }
+                    }else if line.starts_with("msg") {
+                        // msg client, if known
+                        let mut args = line.split_whitespace();
+                        //skip 'msg':
+                        args.next(); 
+                        //get destination:
+                        let ip = match args.next() {
+                            Some(ip) => ip,
+                            None => {
+                                tracing::error!("Missing ip");
+                                continue;
+                            }
+                        };
+                        let port = match args.next() {
+                            Some(port) => port,
+                            None => {
+                                tracing::error!("Missing port");
+                                continue;
+                            }
+                        };
+                        //get message:
+                        let  message = args.collect::<Vec<&str>>().join(" ");
+                        //parse to SocketAddr
+                        let destination = format!("{ip}:{port}");
+                        let addr = match destination.parse::<SocketAddr>() {
+                            Ok(socket) => socket,
+                            Err(e) => {
+                                tracing::error!("Error parsing destination: {}",e);
+                                continue;
+                            }
+                        };
+                        //send message:
+                        //get destination from list of peers
+                        {
+                            let lock = state.lock().await;
+                            let peer = match lock.peers.get(&addr) {
+                                Some(peer) => peer,
+                                None => { 
+                                    tracing::error!("Unknown destination: {}",addr);
+                                    continue;
+                                }
+                            };
+                            if let Err(e) = peer.send(message.into()) {
+                                tracing::info!("Error sending your message. error = {:?}", e);
+                            }
+                        }
+                    } else {
+                        tracing::error!("Unknown command: {}", line);
+                    }
+                }
+                // An error occurred.
+                Some(Err(e)) => {
+                    tracing::error!( "an error occurred while processing stdin. error = {:?}",e);
+                }
+                // The stream has been exhausted.
+                None => break Ok(()),
+            }
+        }
     }
 }
 
@@ -131,18 +295,6 @@ async fn process(
 ) -> Result<(), Box<dyn Error>> {
     let mut lines = Framed::new(stream, LinesCodec::new());
 
-    // Send a prompt to the client to enter their username.
-    lines.send("Please enter your username:").await?;
-
-    // Read the first line from the `LineCodec` stream to get the username.
-    let username = match lines.next().await {
-        Some(Ok(line)) => line,
-        // We didn't get a line so we return early here.
-        _ => {
-            tracing::error!("Failed to get username from {}. Client disconnected.", addr);
-            return Ok(());
-        }
-    };
 
     // Register our peer with state which internally sets up some channels.
     let mut peer = Peer::new(state.clone(), lines).await?;
@@ -150,8 +302,7 @@ async fn process(
     // A client has connected, let's let everyone know.
     {
         let mut state = state.lock().await;
-        let msg = format!("{} has joined the chat", username);
-        tracing::info!("{}", msg);
+        let msg = format!("{addr} has joined the chat");
         state.broadcast(addr, &msg).await;
     }
 
@@ -167,15 +318,15 @@ async fn process(
                 // broadcast this message to the other users.
                 Some(Ok(msg)) => {
                     let mut state = state.lock().await;
-                    let msg = format!("{}: {}", username, msg);
-
+                    let msg = format!("{}: {}", addr, msg);
+                    //handle message from others
                     state.broadcast(addr, &msg).await;
                 }
                 // An error occurred.
                 Some(Err(e)) => {
                     tracing::error!(
                         "an error occurred while processing messages for {}; error = {:?}",
-                        username,
+                        addr,
                         e
                     );
                 }
@@ -191,7 +342,7 @@ async fn process(
         let mut state = state.lock().await;
         state.peers.remove(&addr);
 
-        let msg = format!("{} has left the chat", username);
+        let msg = format!("{} has left the chat", addr);
         tracing::info!("{}", msg);
         state.broadcast(addr, &msg).await;
     }
