@@ -49,7 +49,7 @@ impl Decoder for SwagCoder {
             let header = self.last_common_header.unwrap();
 
             // Check whether we have enough bytes to read the packet
-            let packet_length = header.length as usize;
+            let packet_length = header.header.length as usize;
             if src.len() < packet_length {
                 return Ok(None);
             }
@@ -57,7 +57,7 @@ impl Decoder for SwagCoder {
             let packet_bytes = src.split_to(packet_length);
 
             // Deserialize the packet
-            let packet = match header.type_id {
+            let packet = match header.header.type_id {
                 ROUTING_PACKET_TYPE => {
                     let packet: RoutingPacket = match serde_json::from_slice(&packet_bytes) {
                         Ok(packet) => packet,
@@ -89,7 +89,7 @@ impl Decoder for SwagCoder {
                 _ => {
                     return Err(std::io::Error::new(
                         std::io::ErrorKind::Other,
-                        format!("Unknown packet type: {}", header.type_id)
+                        format!("Unknown packet type: {}", header.header.type_id)
                     ));
                 }
             };
