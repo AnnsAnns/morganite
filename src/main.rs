@@ -1,3 +1,4 @@
+use channel_events::ChannelEvent;
 use swag_coding::SwagCoder;
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::{mpsc, Mutex};
@@ -70,10 +71,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
 }
 
 /// Shorthand for the transmit half of the message channel.
-type Tx = mpsc::UnboundedSender<String>;
+type Tx = mpsc::UnboundedSender<ChannelEvent>;
 
 /// Shorthand for the receive half of the message channel.
-type Rx = mpsc::UnboundedReceiver<String>;
+type Rx = mpsc::UnboundedReceiver<ChannelEvent>;
 
 /// Data that is shared between all peers in the chat server.
 ///
@@ -111,10 +112,10 @@ impl Shared {
 
     /// Send a `LineCodec` encoded message to every peer, except
     /// for the sender.
-    async fn broadcast(&mut self, sender: SocketAddr, message: &str) {
+    async fn broadcast(&mut self, sender: SocketAddr, event: &ChannelEvent) {
         for peer in self.peers.iter_mut() {
             if *peer.0 != sender {
-                let _ = peer.1.send(message.into());
+                let _ = peer.1.send(event.clone());
             }
         }
     }
@@ -154,9 +155,9 @@ async fn handle_console( state: Arc<Mutex<Shared>>) -> Result<(), Box<dyn Error>
     loop {
         tokio::select! {
             //another async task has a message to be send to the user
-            Some(msg) = rx.recv() => {
+            Some(event) = rx.recv() => {
                 //display message
-                tracing::info!("{}", msg);
+                tracing::info!("{:#?}", event);
             }
             //get the next line whenever theres a new one:
             result = reader.next() => match result {
@@ -271,7 +272,7 @@ async fn handle_console( state: Arc<Mutex<Shared>>) -> Result<(), Box<dyn Error>
                                     continue;
                                 }
                             };
-                            if let Err(e) = peer.send(message.into()) {
+                            if let Err(e) = peer.send(ChannelEvent::Message(message)) {
                                 tracing::info!("Error sending your message. error = {:?}", e);
                             }
                         }
@@ -304,17 +305,17 @@ async fn process(
     // A client has connected, let's let everyone know.
     {
         let mut state = state.lock().await;
-        let msg = format!("{addr} has joined the chat");
-        state.broadcast(addr, &msg).await;
+        let msg = tracing::info!("{addr} has joined the chat");
+        state.broadcast(addr, &ChannelEvent::Join(addr.to_string())).await;
     }
 
     // Process incoming messages until our stream is exhausted by a disconnect.
     loop {
         tokio::select! {
             // A message was received from a peer. Send it to the current user.
-            Some(msg) = peer.rx.recv() => {
+            Some(event) = peer.rx.recv() => {
 
-                tracing::info!("received message from peer: {:#?}", msg);
+                tracing::info!("Received Event: {:#?}", event);
                 // let msg = msg?;
                 // peer.swag_coder.send(msg).await?;
             }
@@ -323,9 +324,9 @@ async fn process(
                 // broadcast this message to the other users.
                 Some(Ok(packet)) => {
                     let mut state = state.lock().await;
-                    let msg = format!("{}: {:#?}", addr, packet);
+                    tracing::info!("{}: {:#?}", addr, packet);
                     //handle message from others
-                    state.broadcast(addr, &msg).await;
+                    state.broadcast(addr, &ChannelEvent::Unknown).await;
                 }
                 // An error occurred.
                 Some(Err(e)) => {
@@ -349,7 +350,7 @@ async fn process(
 
         let msg = format!("{} has left the chat", addr);
         tracing::info!("{}", msg);
-        state.broadcast(addr, &msg).await;
+        state.broadcast(addr, &ChannelEvent::Leave(addr.to_string())).await;
     }
 
     Ok(())

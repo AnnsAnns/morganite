@@ -1,10 +1,11 @@
 use crate::protocol::Packet;
 
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum ChannelEvent {
-    Join,
-    Leave,
+    Join(String),
+    Leave(String),
     Message(String),
     Forward(Packet),
+    Unknown
 }
