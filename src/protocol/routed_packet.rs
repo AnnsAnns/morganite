@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Result;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct RoutedPacket {
     packet_type: String,
     source_ip: String,

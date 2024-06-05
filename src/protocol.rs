@@ -6,10 +6,11 @@ pub mod common_header;
 pub mod routed_packet;
 pub mod routing_packet;
 
+#[derive(Clone)]
 pub enum Packet {
     RoutedPacket(RoutedPacket),
     RoutingPacket(RoutingPacket),
 }
 
-const ROUTING_PACKET_TYPE: u8 = 1;
-const ROUTED_PACKET_TYPE: u8 = 2;
+pub const ROUTING_PACKET_TYPE: u8 = 1;
+pub const ROUTED_PACKET_TYPE: u8 = 2;

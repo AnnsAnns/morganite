@@ -1,6 +1,6 @@
 use tokio_util::{bytes::{Buf, BytesMut}, codec::{Decoder, Encoder}};
 
-use crate::protocol::{common_header::{CommonHeader, COMMON_HEADER_LENGTH}, routed_packet::RoutedPacket, routing_packet::RoutingPacket, Packet};
+use crate::protocol::{common_header::{CommonHeader, InnerCommonHeader, COMMON_HEADER_LENGTH}, routed_packet::RoutedPacket, routing_packet::RoutingPacket, Packet, ROUTED_PACKET_TYPE, ROUTING_PACKET_TYPE};
 
 // Swag Decoder is a custom decoder for the SWAG protocol
 struct SwagCoder {
@@ -118,11 +118,66 @@ impl Encoder<Packet> for SwagCoder {
     type Error = std::io::Error;
     
     fn encode(&mut self, item: Packet, dst: &mut BytesMut) -> Result<(), Self::Error> {
+        let bytes = match item.clone() {
+            Packet::RoutingPacket(packet) => {
+                let packet_bytes = match serde_json::to_vec(&packet) {
+                    Ok(bytes) => bytes,
+                    Err(e) => {
+                        return Err(std::io::Error::new(
+                            std::io::ErrorKind::Other,
+                            format!("Error serializing routing packet: {}", e)
+                        ));
+                    }
+                };
 
+                packet_bytes
+            },
+            Packet::RoutedPacket(packet) => {
+                let packet_bytes = match serde_json::to_vec(&packet) {
+                    Ok(bytes) => bytes,
+                    Err(e) => {
+                        return Err(std::io::Error::new(
+                            std::io::ErrorKind::Other,
+                            format!("Error serializing routed packet: {}", e)
+                        ));
+                    }
+                };
 
-        return Err(std::io::Error::new(
-            std::io::ErrorKind::Other,
-            format!("Not implemented")
-        ));
+                packet_bytes
+            }
+        };
+
+        // Calculate the checksum
+        let checksum = crc32fast::hash(&bytes);
+
+        // Create the common header
+        let header = CommonHeader {
+            header: InnerCommonHeader {
+                length: bytes.len() as u16,
+                crc32: checksum,
+                type_id: match item {
+                    Packet::RoutingPacket(_) => ROUTING_PACKET_TYPE,
+                    Packet::RoutedPacket(_) => ROUTED_PACKET_TYPE,
+                },
+            },
+        };
+        let header_string = serde_json::to_string(&header).unwrap();
+        let header_bytes = header_string.as_bytes();
+
+        if header_bytes.len() > COMMON_HEADER_LENGTH {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                format!("Common header too large: {} - Should be {}", header_bytes.len(), COMMON_HEADER_LENGTH)
+            ));
+        }
+
+        // Reserve space for the common header & packet
+        dst.reserve(COMMON_HEADER_LENGTH + bytes.len());
+
+        // Write the common header & packet
+        dst.extend_from_slice(&header_bytes);
+        dst.extend_from_slice(&bytes);
+
+        Ok(())
     }
 }
