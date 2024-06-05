@@ -6,7 +6,7 @@ pub mod common_header;
 pub mod routed_packet;
 pub mod routing_packet;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum Packet {
     RoutedPacket(RoutedPacket),
     RoutingPacket(RoutingPacket),

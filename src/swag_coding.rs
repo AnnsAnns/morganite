@@ -3,12 +3,21 @@ use tokio_util::{bytes::{Buf, BytesMut}, codec::{Decoder, Encoder}};
 use crate::protocol::{common_header::{CommonHeader, InnerCommonHeader, COMMON_HEADER_LENGTH}, routed_packet::RoutedPacket, routing_packet::RoutingPacket, Packet, ROUTED_PACKET_TYPE, ROUTING_PACKET_TYPE};
 
 // Swag Decoder is a custom decoder for the SWAG protocol
-struct SwagCoder {
+pub struct SwagCoder {
     has_common_header: bool,
     last_common_header: Option<CommonHeader>,
 }
 
 const MAX_ACCEPTED_LEN: usize = 8 * 1024 * 1024;
+
+impl SwagCoder {
+    pub fn new() -> Self {
+        SwagCoder {
+            has_common_header: false,
+            last_common_header: None,
+        }
+    }
+}
 
 impl Decoder for SwagCoder {
     type Item = Packet;

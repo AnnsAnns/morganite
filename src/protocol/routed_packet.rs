@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Result;
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct RoutedPacket {
     packet_type: String,
     source_ip: String,
@@ -9,6 +9,7 @@ pub struct RoutedPacket {
     destination_ip: String,
     destination_port: String,
     ttl: String,
+    nickname: String,
     data: String,
 }
 
@@ -20,6 +21,7 @@ fn test_parsing_routed_packet() {
         "source_port":        "6827",
         "destination_ip":     "192.168.234.233",
         "destination_port":   "234",
+        "nickname":           "Test",
         "ttl":                "16",
         "data":               "Test Data"
     }"#;
@@ -30,6 +32,7 @@ fn test_parsing_routed_packet() {
     assert_eq!(packet.source_port, "6827");
     assert_eq!(packet.destination_ip, "192.168.234.233");
     assert_eq!(packet.destination_port, "234");
+    assert_eq!(packet.nickname, "Test");
     assert_eq!(packet.ttl, "16");
     assert_eq!(packet.data, "Test Data");
 }
@@ -42,6 +45,7 @@ fn test_serializing_routed_packet() {
         source_port: "1234".to_string(),
         destination_ip: "153.132.143.121".to_string(),
         destination_port: "4321".to_string(),
+        nickname: "Test".to_string(),
         ttl: "32".to_string(),
         data: "Testing".to_string(),
     };
@@ -50,6 +54,6 @@ fn test_serializing_routed_packet() {
 
     assert_eq!(
         json,
-        r#"{"packet_type":"TESTTYPE","source_ip":"192.168.101.101","source_port":"1234","destination_ip":"153.132.143.121","destination_port":"4321","ttl":"32","data":"Testing"}"#
+        r#"{"packet_type":"TESTTYPE","source_ip":"192.168.101.101","source_port":"1234","destination_ip":"153.132.143.121","destination_port":"4321","ttl":"32","nickname":"Test","data":"Testing"}"#
     );
 }

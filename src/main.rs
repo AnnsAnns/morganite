@@ -1,3 +1,4 @@
+use swag_coding::SwagCoder;
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::{mpsc, Mutex};
 use tokio_stream::StreamExt;
@@ -13,6 +14,7 @@ use std::sync::Arc;
 
 mod protocol;
 mod swag_coding;
+mod channel_events;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
@@ -85,12 +87,12 @@ struct Shared {
 
 /// The state for each connected client.
 struct Peer {
-    /// The TCP socket wrapped with the `Lines` codec, defined below.
+    /// The TCP socket wrapped with the `SwagCoder` codec, defined below.
     ///
     /// This handles sending and receiving data on the socket. When using
     /// `Lines`, we can work at the line level instead of having to manage the
     /// raw byte operations.
-    lines: Framed<TcpStream, LinesCodec>,
+    swag_coder: Framed<TcpStream, SwagCoder>,
 
     /// Receive half of the message channel.
     ///
@@ -122,10 +124,10 @@ impl Peer {
     /// Create a new instance of `Peer`.
     async fn new(
         state: Arc<Mutex<Shared>>,
-        lines: Framed<TcpStream, LinesCodec>,
+        swag_coder: Framed<TcpStream, SwagCoder>,
     ) -> io::Result<Peer> {
         // Get the client socket address
-        let addr = lines.get_ref().peer_addr()?;
+        let addr = swag_coder.get_ref().peer_addr()?;
 
         // Create a channel for this peer
         let (tx, rx) = mpsc::unbounded_channel();
@@ -133,7 +135,7 @@ impl Peer {
         // Add an entry for this `Peer` in the shared state map.
         state.lock().await.peers.insert(addr, tx);
         tracing::info!("added address: {}",addr);
-        Ok(Peer { lines, rx })
+        Ok(Peer { swag_coder, rx })
     }
 }
 ///TUI handling the users console inputs
@@ -294,11 +296,10 @@ async fn process(
     stream: TcpStream,
     addr: SocketAddr,
 ) -> Result<(), Box<dyn Error>> {
-    let lines = Framed::new(stream, LinesCodec::new());
-
+    let swag_coder = Framed::new(stream, SwagCoder::new());
 
     // Register our peer with state which internally sets up some channels.
-    let mut peer = Peer::new(state.clone(), lines).await?;
+    let mut peer = Peer::new(state.clone(), swag_coder).await?;
 
     // A client has connected, let's let everyone know.
     {
@@ -312,14 +313,17 @@ async fn process(
         tokio::select! {
             // A message was received from a peer. Send it to the current user.
             Some(msg) = peer.rx.recv() => {
-                peer.lines.send(&msg).await?;
+
+                tracing::info!("received message from peer: {:#?}", msg);
+                // let msg = msg?;
+                // peer.swag_coder.send(msg).await?;
             }
-            result = peer.lines.next() => match result {
+            result = peer.swag_coder.next() => match result {
                 // A message was received from the current user, we should
                 // broadcast this message to the other users.
-                Some(Ok(msg)) => {
+                Some(Ok(packet)) => {
                     let mut state = state.lock().await;
-                    let msg = format!("{}: {}", addr, msg);
+                    let msg = format!("{}: {:#?}", addr, packet);
                     //handle message from others
                     state.broadcast(addr, &msg).await;
                 }
