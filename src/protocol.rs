@@ -1,3 +1,15 @@
-mod common_header;
-mod routed_packet;
-mod routing_packet;
+use common_header::CommonHeader;
+use routed_packet::RoutedPacket;
+use routing_packet::RoutingPacket;
+
+pub mod common_header;
+pub mod routed_packet;
+pub mod routing_packet;
+
+pub enum Packet {
+    RoutedPacket(RoutedPacket),
+    RoutingPacket(RoutingPacket),
+}
+
+const ROUTING_PACKET_TYPE: u8 = 1;
+const ROUTED_PACKET_TYPE: u8 = 2;

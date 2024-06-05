@@ -12,6 +12,7 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 
 mod protocol;
+mod swag_coding;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
@@ -293,7 +294,7 @@ async fn process(
     stream: TcpStream,
     addr: SocketAddr,
 ) -> Result<(), Box<dyn Error>> {
-    let mut lines = Framed::new(stream, LinesCodec::new());
+    let lines = Framed::new(stream, LinesCodec::new());
 
 
     // Register our peer with state which internally sets up some channels.
