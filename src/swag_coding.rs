@@ -1,4 +1,4 @@
-use tokio_util::{bytes::Buf, codec::Decoder};
+use tokio_util::{bytes::{Buf, BytesMut}, codec::{Decoder, Encoder}};
 
 use crate::protocol::{common_header::{CommonHeader, COMMON_HEADER_LENGTH}, routed_packet::RoutedPacket, routing_packet::RoutingPacket, Packet};
 
@@ -56,6 +56,15 @@ impl Decoder for SwagCoder {
 
             let packet_bytes = src.split_to(packet_length);
 
+            // Verify the checksum
+            let checksum = crc32fast::hash(&packet_bytes);
+            if checksum != header.header.crc32 {
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::Other,
+                    format!("Checksum mismatch: {} != {}", checksum, header.header.crc32)
+                ));
+            }
+
             // Deserialize the packet
             let packet = match header.header.type_id {
                 ROUTING_PACKET_TYPE => {
@@ -102,5 +111,18 @@ impl Decoder for SwagCoder {
             std::io::ErrorKind::Other,
             format!("Error processing packet")
         ));;
+    }
+}
+
+impl Encoder<Packet> for SwagCoder {
+    type Error = std::io::Error;
+    
+    fn encode(&mut self, item: Packet, dst: &mut BytesMut) -> Result<(), Self::Error> {
+
+
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::Other,
+            format!("Not implemented")
+        ));
     }
 }
