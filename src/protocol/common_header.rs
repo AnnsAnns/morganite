@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-pub const COMMON_HEADER_LENGTH: usize = 50;
+pub const COMMON_HEADER_LENGTH: usize = 56;
 
 #[derive(Serialize, Deserialize, Clone, Copy)]
 pub struct InnerCommonHeader {
