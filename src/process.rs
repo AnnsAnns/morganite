@@ -14,6 +14,9 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 
 use crate::peer::Peer;
+use crate::protocol::Packet;
+use crate::protocol::shared_header::SharedHeader;
+use crate::protocol::routed_packet::RoutedPacket;
 use crate::shared::Shared;
 use crate::{channel_events, swag_coding};
 
@@ -23,11 +26,17 @@ pub async fn process(
     stream: TcpStream,
     addr: SocketAddr,
 ) -> Result<(), Box<dyn Error>> {
+    let local_addr = match stream.local_addr() {
+        Ok(addr) => addr,
+        Err(e) => { 
+            tracing::info!("an error occurred; error = {:?}", e);
+            panic!(); //TODO maybe different error handling
+        },
+    };
     let swag_coder = Framed::new(stream, SwagCoder::new());
-
+    
     // Register our peer with state which internally sets up some channels.
     let mut peer = Peer::new(state.clone(), swag_coder).await?;
-
     // A client has connected, let's let everyone know.
     {
         let mut state = state.lock().await;
@@ -38,12 +47,33 @@ pub async fn process(
     // Process incoming messages until our stream is exhausted by a disconnect.
     loop {
         tokio::select! {
-            // A message was received from a peer. Send it to the current user.
             Some(event) = peer.rx.recv() => {
-
                 tracing::info!("Received Event: {:#?}", event);
-                // let msg = msg?;
-                // peer.swag_coder.send(msg).await?;
+                let header = SharedHeader {
+                    source_ip: local_addr.ip().to_string(),
+                    source_port: local_addr.port().to_string(),
+                    destination_ip: addr.ip().to_string(),
+                    destination_port: addr.port().to_string(),
+                    ttl: 16,
+                };
+                // create packet
+                match event {
+                    ChannelEvent::Message(msg) => {
+                        let routed_packet = RoutedPacket {
+                            header,
+                            nickname: "TODO".to_string(),
+                            data: msg,
+                        };
+                        peer.swag_coder.send(Packet::RoutedPacket(routed_packet)).await?;
+                    },
+                    ChannelEvent::Forward(packet) => {
+                        peer.swag_coder.send(packet).await?;
+                    }
+                    _ => tracing::error!("Received Event: {:#?} is not implemented!", event),
+                } 
+                
+
+
             }
             result = peer.swag_coder.next() => match result {
                 // A message was received from the current user, we should

@@ -6,9 +6,9 @@ use super::shared_header::SharedHeader;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct RoutedPacket {
-    header: SharedHeader,
-    nickname: String,
-    data: String,
+    pub header: SharedHeader,
+    pub nickname: String,
+    pub data: String,
 }
 
 #[test]

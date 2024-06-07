@@ -17,7 +17,6 @@ use crate::shared::{Shared};
 
 ///TUI handling the users console inputs
 pub async fn handle_console( state: Arc<Mutex<Shared>>) -> Result<(), Box<dyn Error>>{
-    // TODO
     let stdin = tokio::io::stdin();
     let mut reader = FramedRead::new(stdin, LinesCodec::new());
 
