@@ -5,6 +5,7 @@ use routing_packet::RoutingPacket;
 pub mod common_header;
 pub mod routed_packet;
 pub mod routing_packet;
+pub mod shared_header;
 
 #[derive(Clone, Debug)]
 pub enum Packet {

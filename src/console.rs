@@ -103,7 +103,9 @@ pub async fn handle_console( state: Arc<Mutex<Shared>>) -> Result<(), Box<dyn Er
                         {
                             let mut lock = state.lock().await;
                             for peer in lock.peers.iter_mut() {
-                                tracing::info!("connected to: {}",peer.0);
+                                if peer.0 != &addr {
+                                    tracing::info!("connected to: {}",peer.0);
+                                }
                             }
                         }
                     }else if line.starts_with("msg") {
