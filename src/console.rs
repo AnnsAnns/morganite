@@ -21,6 +21,7 @@ pub async fn handle_console( state: Arc<Mutex<Shared>>) -> Result<(), Box<dyn Er
     let mut reader = FramedRead::new(stdin, LinesCodec::new());
 
     let addr = "127.0.0.1:4444".parse::<SocketAddr>()?;
+    let client_addr = "127.0.0.1:6142".parse::<SocketAddr>()?;
 
     // Create a channel for this peer
     let (tx, mut rx) = mpsc::unbounded_channel();
@@ -131,7 +132,7 @@ pub async fn handle_console( state: Arc<Mutex<Shared>>) -> Result<(), Box<dyn Er
                         let  message = args.collect::<Vec<&str>>().join(" ");
                         //parse to SocketAddr
                         let destination = format!("{ip}:{port}");
-                        let addr = match destination.parse::<SocketAddr>() {
+                        let destination_addr = match destination.parse::<SocketAddr>() {
                             Ok(socket) => socket,
                             Err(e) => {
                                 tracing::error!("Error parsing destination: {}",e);
@@ -139,17 +140,34 @@ pub async fn handle_console( state: Arc<Mutex<Shared>>) -> Result<(), Box<dyn Er
                             }
                         };
                         //send message:
-                        //get destination from list of peers
-                        {
+                        //get route from routing table:
+                        {   
+                            //look for routing table entry
                             let lock = state.lock().await;
-                            let peer = match lock.peers.get(&addr) {
-                                Some(peer) => peer,
+                            let routing_table_entry = match lock.routing_table.get(&destination_addr) {
+                                Some(routing_table_entry) => routing_table_entry,
                                 None => { 
-                                    tracing::error!("Unknown destination: {}",addr);
+                                    tracing::error!("No route to destination: {} available",destination_addr);
                                     continue;
                                 }
                             };
-                            if let Err(e) = peer.send(ChannelEvent::Message(message)) {
+                            //get channel to next client/destination on route
+                            let target;
+                            if routing_table_entry.next == client_addr {
+                                target = destination_addr;
+                            } else {
+                                target = routing_table_entry.next;
+                            }
+                            let peer = match lock.peers.get(&target) {
+                                Some(peer) => peer,
+                                None => { 
+                                    tracing::error!("No Channel to destination: {} available",addr);
+                                    //probably set routing table entry to unreachable here
+                                    continue;
+                                }
+                            };
+                            //send to channel
+                            if let Err(e) = peer.send(ChannelEvent::Message(message, destination_addr)) {
                                 tracing::info!("Error sending your message. error = {:?}", e);
                             }
                         }

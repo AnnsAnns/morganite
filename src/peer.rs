@@ -13,7 +13,7 @@ use std::io;
 use std::net::SocketAddr;
 use std::sync::Arc;
 
-use crate::shared::{Rx, Shared};
+use crate::shared::{RoutingTableEntry, Rx, Shared};
 use crate::{channel_events, swag_coding};
 
 /// The state for each connected client.
@@ -44,8 +44,13 @@ impl Peer {
         // Create a channel for this peer
         let (tx, rx) = mpsc::unbounded_channel();
 
-        // Add an entry for this `Peer` in the shared state map.
-        state.lock().await.peers.insert(addr, tx);
+        // Add an entry for this `Peer` in the shared state map and the routing table.
+        {
+            let mut lock = state.lock().await;
+            lock.peers.insert(addr, tx);
+            lock.routing_table.insert(addr, RoutingTableEntry {next:swag_coder.get_ref().local_addr()?, hop_count: 1, ttl: true});
+        }
+       
         tracing::info!("added address: {}",addr);
         Ok(Peer { swag_coder, rx })
     }

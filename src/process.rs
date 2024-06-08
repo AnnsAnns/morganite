@@ -52,7 +52,7 @@ pub async fn process(
             Some(event) = peer.rx.recv() => {
                 tracing::info!("Received Event: {:#?}", event);
                 // create packet
-                let header = SharedHeader {
+                let mut header = SharedHeader {
                     source_ip: local_addr.ip().to_string(),
                     source_port: local_addr.port().to_string(),
                     dest_ip: addr.ip().to_string(),
@@ -60,7 +60,9 @@ pub async fn process(
                     ttl: 16,
                 };
                 match event {
-                    ChannelEvent::Message(msg) => {
+                    ChannelEvent::Message(msg, dest_addr) => {
+                        header.dest_ip = dest_addr.ip().to_string();
+                        header.dest_port = dest_addr.port().to_string();
                         let routed_packet = RoutedPacket {
                             header,
                             nickname: "TODO".to_string(),
@@ -95,7 +97,7 @@ pub async fn process(
                             match routed_packet.header.dest_ip == addr.ip().to_string() {
                                 true => {
                                     //message is for us, display message
-                                    tracing::trace!("{}: {}",routed_packet.nickname,routed_packet.message);
+                                    tracing::trace!("{}: {}",routed_packet.nickname, routed_packet.message);
                                 },
                                 //message is for someone else, try forwarding it:
                                 false => {
