@@ -27,8 +27,10 @@ pub type Rx = mpsc::UnboundedReceiver<ChannelEvent>;
 /// message is received from a client, it is broadcasted to all peers by
 /// iterating over the `peers` entries and sending a copy of the message on each
 /// `Tx`.
-pub struct Shared {
-    pub peers: HashMap<SocketAddr, Tx>,
+pub struct Shared {  
+    pub peers: HashMap<SocketAddr, Tx>, //maybe refactor to maybe channels or streams?
+    //                         target    |  next      | hop_count
+    pub routing_table: HashMap<SocketAddr, (SocketAddr, i32)>,
 }
 
 
@@ -37,6 +39,7 @@ impl Shared {
     pub fn new() -> Self {
         Shared {
             peers: HashMap::new(),
+            routing_table: HashMap::new(),
         }
     }
 

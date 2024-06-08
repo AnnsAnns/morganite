@@ -47,22 +47,23 @@ pub async fn process(
     // Process incoming messages until our stream is exhausted by a disconnect.
     loop {
         tokio::select! {
+            //another task send us a message:
             Some(event) = peer.rx.recv() => {
                 tracing::info!("Received Event: {:#?}", event);
+                // create packet
                 let header = SharedHeader {
                     source_ip: local_addr.ip().to_string(),
                     source_port: local_addr.port().to_string(),
-                    destination_ip: addr.ip().to_string(),
-                    destination_port: addr.port().to_string(),
+                    dest_ip: addr.ip().to_string(),
+                    dest_port: addr.port().to_string(),
                     ttl: 16,
                 };
-                // create packet
                 match event {
                     ChannelEvent::Message(msg) => {
                         let routed_packet = RoutedPacket {
                             header,
                             nickname: "TODO".to_string(),
-                            data: msg,
+                            message: msg,
                         };
                         peer.swag_coder.send(Packet::RoutedPacket(routed_packet)).await?;
                     },
@@ -75,14 +76,69 @@ pub async fn process(
 
 
             }
+            // A message was received from this tcp stream:
             result = peer.swag_coder.next() => match result {
-                // A message was received from the current user, we should
-                // broadcast this message to the other users.
                 Some(Ok(packet)) => {
-                    let mut state = state.lock().await;
-                    tracing::info!("{}: {:#?}", addr, packet);
-                    //handle message from others
-                    state.broadcast(addr, &ChannelEvent::Unknown).await;
+                    {
+                        let mut state = state.lock().await;
+                        tracing::info!("New Message from {}: {:#?}", addr, packet);
+                        //handle message from others
+                        state.broadcast(addr, &ChannelEvent::Unknown).await;
+                    }
+
+                    //assess what kind of packet we received:
+                    match &packet {
+                        Packet::RoutedPacket(routed_packet) => {
+                            let mut new_event = ChannelEvent::Unknown;
+                            //we received a message, check who's the destination:
+                            match routed_packet.header.dest_ip == addr.ip().to_string() {
+                                true => {
+                                    //message is for us, display message
+                                    tracing::trace!("{}: {}",routed_packet.nickname,routed_packet.message);
+                                },
+                                //message is for someone else, try forwarding it:
+                                false => {
+                                    //parse destination to SocketAddr
+                                    let dest = format!("{}:{}",routed_packet.header.dest_ip,routed_packet.header.dest_port);
+                                    let destination_addr = match dest.parse::<SocketAddr>() {
+                                        Ok(socket) => socket,
+                                        Err(e) => {
+                                            tracing::error!("Error parsing destination to forward to: {}",e);
+                                            continue;
+                                        }
+                                    };
+                                    { //check routing table for the specified destination
+                                        let mut lock = state.lock().await;
+                                        //get next destination on route
+                                        let routing_entry = match lock.routing_table.get(&destination_addr) {
+                                            Some(routing_entry) => routing_entry,
+                                            None => {
+                                                tracing::error!("Forwarding: No route to destination available: {}",destination_addr);
+                                                continue;
+                                            }
+                                        };
+                                        //get channel to next on route
+                                        let peer = match lock.peers.get(&routing_entry.0) {
+                                            Some(peer) => peer,
+                                            None => { 
+                                                tracing::error!("Forwarding: No channel to destination available: {}",routing_entry.0);
+                                                continue;
+                                            }
+                                        };
+                                        //internal message to forward the packet as is
+                                        new_event = ChannelEvent::Forward(packet);
+                                        if let Err(e) = peer.send(new_event) {
+                                            tracing::info!("Error sending your message. error = {:?}", e);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        Packet::RoutingPacket(routing_packet) => {
+                            //we received a routing packet, check which one:
+
+                        }
+                    }
                 }
                 // An error occurred.
                 Some(Err(e)) => {

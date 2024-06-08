@@ -21,7 +21,7 @@ pub struct Peer {
     /// The TCP socket wrapped with the `SwagCoder` codec, defined below.
     ///
     /// This handles sending and receiving data on the socket. When using
-    /// `Lines`, we can work at the line level instead of having to manage the
+    /// `SwagCoder`, we can work at the packet level instead of having to manage the
     /// raw byte operations.
     pub swag_coder: Framed<TcpStream, SwagCoder>,
 

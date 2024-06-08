@@ -15,3 +15,12 @@ pub enum Packet {
 
 pub const ROUTING_PACKET_TYPE: u8 = 1;
 pub const ROUTED_PACKET_TYPE: u8 = 2;
+
+pub enum TypeID { //lots of new types to integrate, but only 2 different packet styles if I understood them correctly
+    Message = 1,
+    CR,
+    CRR,
+    SCC,
+    SCCR,
+    STU,
+}

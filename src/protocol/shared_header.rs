@@ -5,7 +5,7 @@ use serde_json::Result;
 pub struct SharedHeader {
     pub source_ip: String,
     pub source_port: String,
-    pub destination_ip: String,
-    pub destination_port: String,
+    pub dest_ip: String,
+    pub dest_port: String,
     pub ttl: u8,
 }

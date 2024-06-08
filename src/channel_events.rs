@@ -3,9 +3,9 @@ use crate::protocol::Packet;
 
 #[derive(Debug, Clone)]
 pub enum ChannelEvent {
-    Join(String),
-    Leave(String),
-    Message(String),
-    Forward(Packet),
+    Join(String), //current thoughts: Terminal output for Join and Leave only in console(if not when initially receiving the message) 
+    Leave(String), 
+    Message(String), //only for sending messages to other clients?
+    Forward(Packet), 
     Unknown
 }
