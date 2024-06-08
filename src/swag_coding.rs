@@ -1,6 +1,6 @@
 use tokio_util::{bytes::{Buf, BytesMut}, codec::{Decoder, Encoder}};
 
-use crate::protocol::{common_header::{CommonHeader, InnerCommonHeader, COMMON_HEADER_LENGTH}, routed_packet::RoutedPacket, routing_packet::RoutingPacket, Packet, ROUTED_PACKET_TYPE, ROUTING_PACKET_TYPE};
+use crate::protocol::{common_header::{CommonHeader, InnerCommonHeader, COMMON_HEADER_LENGTH}, routed_packet::RoutedPacket, routing_packet::RoutingPacket, Packet, MESSAGE, CR, CRR, SCC, SCCR, STU};
 
 // Swag Decoder is a custom decoder for the SWAG protocol
 pub struct SwagCoder {
@@ -76,7 +76,7 @@ impl Decoder for SwagCoder {
 
             // Deserialize the packet
             let packet = match header.header.type_id {
-                ROUTING_PACKET_TYPE => {
+                CR|CRR|SCC|SCCR|STU => {
                     let packet: RoutingPacket = match serde_json::from_slice(&packet_bytes) {
                         Ok(packet) => packet,
                         Err(e) => {
@@ -88,9 +88,9 @@ impl Decoder for SwagCoder {
                     };
 
                     self.has_common_header = false;
-                    Packet::RoutingPacket(packet)
+                    Packet::RoutingPacket(packet,  header.header.type_id)
                 },
-                ROUTED_PACKET_TYPE => {
+                MESSAGE => {
                     let packet: RoutedPacket = match serde_json::from_slice(&packet_bytes) {
                         Ok(packet) => packet,
                         Err(e) => {
@@ -128,7 +128,7 @@ impl Encoder<Packet> for SwagCoder {
     
     fn encode(&mut self, item: Packet, dst: &mut BytesMut) -> Result<(), Self::Error> {
         let bytes = match item.clone() {
-            Packet::RoutingPacket(packet) => {
+            Packet::RoutingPacket(packet,_) => {
                 let packet_bytes = match serde_json::to_vec(&packet) {
                     Ok(bytes) => bytes,
                     Err(e) => {
@@ -165,8 +165,8 @@ impl Encoder<Packet> for SwagCoder {
                 length: bytes.len() as u16,
                 crc32: checksum,
                 type_id: match item {
-                    Packet::RoutingPacket(_) => ROUTING_PACKET_TYPE,
-                    Packet::RoutedPacket(_) => ROUTED_PACKET_TYPE,
+                    Packet::RoutingPacket(_,type_id) => type_id,
+                    Packet::RoutedPacket(_) => MESSAGE,
                 },
             },
         };

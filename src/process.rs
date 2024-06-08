@@ -15,6 +15,7 @@ use std::sync::Arc;
 
 use crate::peer::Peer;
 use crate::protocol::Packet;
+use crate::protocol::{MESSAGE, CR, CRR, SCC, SCCR, STU};
 use crate::protocol::shared_header::SharedHeader;
 use crate::protocol::routed_packet::RoutedPacket;
 use crate::shared::Shared;
@@ -118,10 +119,10 @@ pub async fn process(
                                             }
                                         };
                                         //get channel to next on route
-                                        let peer = match lock.peers.get(&routing_entry.0) {
+                                        let peer = match lock.peers.get(&routing_entry.next) {
                                             Some(peer) => peer,
                                             None => { 
-                                                tracing::error!("Forwarding: No channel to destination available: {}",routing_entry.0);
+                                                tracing::error!("Forwarding: No channel to destination available: {}",routing_entry.next);
                                                 continue;
                                             }
                                         };
@@ -134,9 +135,19 @@ pub async fn process(
                                 }
                             }
                         }
-                        Packet::RoutingPacket(routing_packet) => {
-                            //we received a routing packet, check which one:
-
+                        Packet::RoutingPacket(routing_packet, type_id) => {
+                            //we received a routing packet, check which one and handle it:
+                            match *type_id {
+                                //routing packet type_ids:
+                                CR => tracing::error!("Type ID of 2 not implemented" ),
+                                CRR => tracing::error!("Type ID of 3 not implemented"),
+                                SCC => tracing::error!("Type ID of 4 not implemented"),
+                                SCCR => tracing::error!("Type ID 5 of not implemented"),
+                                STU => tracing::error!("Type ID 6 of not implemented"),
+                                //undefined type_id:
+                                MESSAGE => tracing::error!("Routing packet with type_id of Message detected!"),
+                                _ => tracing::error!("Type ID not implemented or expected!"),
+                            }
                         }
                     }
                 }

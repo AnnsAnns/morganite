@@ -21,6 +21,11 @@ pub type Tx = mpsc::UnboundedSender<ChannelEvent>;
 /// Shorthand for the receive half of the message channel.
 pub type Rx = mpsc::UnboundedReceiver<ChannelEvent>;
 
+pub struct RoutingTableEntry {
+    pub next: SocketAddr,
+    pub hop_count: i32,
+    pub ttl: bool, //or timestamp? TODO
+}
 /// Data that is shared between all peers in the chat server.
 ///
 /// This is the set of `Tx` handles for all connected clients. Whenever a
@@ -29,8 +34,8 @@ pub type Rx = mpsc::UnboundedReceiver<ChannelEvent>;
 /// `Tx`.
 pub struct Shared {  
     pub peers: HashMap<SocketAddr, Tx>, //maybe refactor to maybe channels or streams?
-    //                         target    |  next      | hop_count
-    pub routing_table: HashMap<SocketAddr, (SocketAddr, i32)>,
+    //                         target    |  next,hop_count,ttl
+    pub routing_table: HashMap<SocketAddr, RoutingTableEntry>,
 }
 
 
