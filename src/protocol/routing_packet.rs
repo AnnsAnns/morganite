@@ -7,9 +7,9 @@ use super::shared_header::SharedHeader;
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 pub struct  RoutingEntry { //not sure about the int types here, we didn't specify anything in the protocol
     pub target_ip: String,
-    pub target_port: i32,
+    pub target_port: u16,
     pub next_ip: String,
-    pub next_port: i32,
+    pub next_port: u16,
     pub hop_count: i32,
 }
 
