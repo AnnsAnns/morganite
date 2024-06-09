@@ -13,6 +13,7 @@ use std::sync::Arc;
 use crate::channel_events::ChannelEvent;
 use crate::process::process;
 
+use crate::protocol::CR;
 use crate::shared::{Shared};
 
 ///TUI handling the users console inputs
@@ -73,7 +74,7 @@ pub async fn handle_console( state: Arc<Mutex<Shared>>) -> Result<(), Box<dyn Er
                         };
                         //parse to SocketAddr
                         let destination = format!("{}:{}",ip,port);
-                        let addr = match destination.parse::<SocketAddr>() {
+                        let destination_addr = match destination.parse::<SocketAddr>() {
                             Ok(socket) => socket,
                             Err(e) => {
                                 tracing::error!("Error parsing destination: {}",e);
@@ -81,7 +82,7 @@ pub async fn handle_console( state: Arc<Mutex<Shared>>) -> Result<(), Box<dyn Er
                             }
                         };
                         //create tcp stream
-                        let stream = match TcpStream::connect(addr).await {
+                        let stream = match TcpStream::connect(destination_addr).await {
                             Ok(stream) => stream,
                         Err(e) => {
                             tracing::error!("Failed to connect to {}: {}", destination, e);
@@ -89,22 +90,35 @@ pub async fn handle_console( state: Arc<Mutex<Shared>>) -> Result<(), Box<dyn Er
                             }   
                         };
                         // Clone a handle to the `Shared` state for the new connection.
-                        let state = Arc::clone(&state);
+                        let proccess_state = Arc::clone(&state);
                         //spawn asynchronous handler
                         tokio::spawn(async move {
-                        tracing::info!("connected to: {}",addr);
-                        if let Err(e) = process(state, stream, addr).await {
+                        tracing::info!("connected to: {}",destination_addr);
+                        if let Err(e) = process(proccess_state, stream, destination_addr).await {
                             tracing::info!("an error occurred; error = {:?}", e);
                         }
-                    });
-                
+                        });
+                        {
+                            let lock = state.lock().await;
+                            let peer = match lock.peers.get(&addr) {
+                                Some(peer) => peer,
+                                None => { 
+                                    tracing::error!("Maybe too early for CR?: {}",addr);
+                                    continue;
+                                }
+                            };
+                            //send to channel
+                            if let Err(e) = peer.send(ChannelEvent::Routing(CR)) {
+                                tracing::info!("Error sending the CR. error = {:?}", e);
+                            }
+                        }
                     } else if line.starts_with("contacts") {
                         // diplay the routing table
                         {
                             let mut lock = state.lock().await;
-                            for peer in lock.peers.iter_mut() {
-                                if peer.0 != &addr {
-                                    tracing::info!("connected to: {}",peer.0);
+                            for entry in lock.routing_table.iter_mut() {
+                                if entry.0 != &client_addr {
+                                    tracing::info!("connected to: {}",entry.0);
                                 }
                             }
                         }
@@ -138,6 +152,7 @@ pub async fn handle_console( state: Arc<Mutex<Shared>>) -> Result<(), Box<dyn Er
                                 tracing::error!("Error parsing destination: {}",e);
                                 continue;
                             }
+                        
                         };
                         //send message:
                         //get route from routing table:
@@ -161,7 +176,7 @@ pub async fn handle_console( state: Arc<Mutex<Shared>>) -> Result<(), Box<dyn Er
                             let peer = match lock.peers.get(&target) {
                                 Some(peer) => peer,
                                 None => { 
-                                    tracing::error!("No Channel to destination: {} available",addr);
+                                    tracing::error!("No Channel to destination: {} available",target);
                                     //probably set routing table entry to unreachable here
                                     continue;
                                 }

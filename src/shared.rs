@@ -13,6 +13,7 @@ use std::io;
 use std::net::SocketAddr;
 use std::sync::Arc;
 
+use crate::protocol::routing_packet::RoutingEntry;
 use crate::{channel_events, swag_coding};
 
 /// Shorthand for the transmit half of the message channel.
@@ -56,5 +57,10 @@ impl Shared {
                 let _ = peer.1.send(event.clone());
             }
         }
+    }
+    ///return all entries in the routing table besides the ones with target as destination or next as a vector 
+    pub async fn get_routing_table(target: SocketAddr) {
+        let routing_entries: Vec<RoutingEntry> = Vec::new();
+        todo!();
     }
 }

@@ -40,7 +40,7 @@ impl Peer {
     ) -> io::Result<Peer> {
         // Get the client socket address
         let addr = swag_coder.get_ref().peer_addr()?;
-
+        let next_addr = "127.0.0.1:6142".parse::<SocketAddr>().unwrap();
         // Create a channel for this peer
         let (tx, rx) = mpsc::unbounded_channel();
 
@@ -48,7 +48,7 @@ impl Peer {
         {
             let mut lock = state.lock().await;
             lock.peers.insert(addr, tx);
-            lock.routing_table.insert(addr, RoutingTableEntry {next:swag_coder.get_ref().local_addr()?, hop_count: 1, ttl: true});
+            lock.routing_table.insert(addr, RoutingTableEntry {next:next_addr, hop_count: 1, ttl: true});
         }
        
         tracing::info!("added address: {}",addr);

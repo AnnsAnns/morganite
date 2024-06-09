@@ -28,7 +28,7 @@ pub async fn process(
     addr: SocketAddr,
 ) -> Result<(), Box<dyn Error>> {
     let local_addr = match stream.local_addr() {
-        Ok(addr) => addr,
+        Ok(local_addr) => local_addr,
         Err(e) => { 
             tracing::info!("an error occurred; error = {:?}", e);
             panic!(); //TODO maybe different error handling
@@ -94,16 +94,17 @@ pub async fn process(
                         Packet::RoutedPacket(routed_packet) => {
                             let mut new_event = ChannelEvent::Unknown;
                             //we received a message, check who's the destination:
-                            match routed_packet.header.dest_ip == addr.ip().to_string() {
+                            let packet_destination = format!("{}:{}",routed_packet.header.dest_ip,routed_packet.header.dest_port);
+                            tracing::info!("local: {}, dest: {}",local_addr, packet_destination);
+                            match  packet_destination == local_addr.to_string() {
                                 true => {
                                     //message is for us, display message
-                                    tracing::trace!("{}: {}",routed_packet.nickname, routed_packet.message);
+                                    tracing::info!("{}: {}",routed_packet.nickname, routed_packet.message);
                                 },
                                 //message is for someone else, try forwarding it:
                                 false => {
                                     //parse destination to SocketAddr
-                                    let dest = format!("{}:{}",routed_packet.header.dest_ip,routed_packet.header.dest_port);
-                                    let destination_addr = match dest.parse::<SocketAddr>() {
+                                    let destination_addr = match packet_destination.parse::<SocketAddr>() {
                                         Ok(socket) => socket,
                                         Err(e) => {
                                             tracing::error!("Error parsing destination to forward to: {}",e);
@@ -172,6 +173,7 @@ pub async fn process(
     {
         let mut state = state.lock().await;
         state.peers.remove(&addr);
+        state.routing_table.remove(&addr);
 
         let msg = format!("{} has left the chat", addr);
         tracing::info!("{}", msg);

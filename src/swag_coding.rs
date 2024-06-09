@@ -1,6 +1,6 @@
 use tokio_util::{bytes::{Buf, BytesMut}, codec::{Decoder, Encoder}};
 
-use crate::protocol::{common_header::{CommonHeader, InnerCommonHeader, COMMON_HEADER_LENGTH}, routed_packet::RoutedPacket, routing_packet::RoutingPacket, Packet, MESSAGE, CR, CRR, SCC, SCCR, STU};
+use crate::protocol::{common_header::{CommonHeader, InnerCommonHeader, COMMON_HEADER_LENGTH}, routed_packet::RoutedPacket, routing_packet::RoutingPacket, shared_header::SharedHeader, Packet, CR, CRR, MESSAGE, SCC, SCCR, STU};
 
 // Swag Decoder is a custom decoder for the SWAG protocol
 pub struct SwagCoder {
@@ -54,6 +54,7 @@ impl Decoder for SwagCoder {
 
             self.last_common_header = Some(header);
             self.has_common_header = true;
+            return self.decode(src);
         } else {
             let header = self.last_common_header.unwrap();
 
@@ -88,7 +89,7 @@ impl Decoder for SwagCoder {
                     };
 
                     self.has_common_header = false;
-                    Packet::RoutingPacket(packet,  header.header.type_id)
+                    Packet::RoutingPacket(packet, header.header.type_id)
                 },
                 MESSAGE => {
                     let packet: RoutedPacket = match serde_json::from_slice(&packet_bytes) {
@@ -158,7 +159,7 @@ impl Encoder<Packet> for SwagCoder {
 
         // Calculate the checksum
         let checksum = crc32fast::hash(&bytes);
-
+        let padded_checksum = format!("{:010}", checksum); 
         // Create the common header
         let header = CommonHeader {
             header: InnerCommonHeader {
@@ -179,7 +180,7 @@ impl Encoder<Packet> for SwagCoder {
                 format!("Common header too large: {} - Should be {}", header_bytes.len(), COMMON_HEADER_LENGTH)
             ));
         }
-
+        
         // Reserve space for the common header & packet
         dst.reserve(COMMON_HEADER_LENGTH + bytes.len());
 
@@ -189,4 +190,14 @@ impl Encoder<Packet> for SwagCoder {
 
         Ok(())
     }
+}
+
+#[test]
+pub fn test_weird_decode() {
+    let mut coder = SwagCoder::new();
+    let packet = RoutedPacket { header: SharedHeader { source_ip: "127.0.0.1".to_string(), source_port: "58471".to_string(), dest_ip: "127.0.0.1".to_string(), dest_port: "6143".to_string(), ttl: 16 }, nickname: "TODO".to_string(), message: "hi".to_string() };
+    let mut encoded= BytesMut::new();
+    coder.encode(Packet::RoutedPacket((packet)),&mut encoded).unwrap();
+    let result = coder.decode(&mut encoded);
+    println!("result: {:?}", result.unwrap());
 }
