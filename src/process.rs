@@ -14,6 +14,7 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 
 use crate::peer::Peer;
+use crate::protocol::routing_packet::{RoutingEntry, RoutingPacket};
 use crate::protocol::Packet;
 use crate::protocol::{MESSAGE, CR, CRR, SCC, SCCR, STU};
 use crate::protocol::shared_header::SharedHeader;
@@ -26,6 +27,7 @@ pub async fn process(
     state: Arc<Mutex<Shared>>,
     stream: TcpStream,
     addr: SocketAddr,
+    send_cr: bool,
 ) -> Result<(), Box<dyn Error>> {
     let local_addr = match stream.local_addr() {
         Ok(local_addr) => local_addr,
@@ -43,6 +45,18 @@ pub async fn process(
         let mut state = state.lock().await;
         let msg = tracing::info!("{addr} has joined the chat");
         state.broadcast(addr, &ChannelEvent::Join(addr.to_string())).await;
+        if send_cr {
+            match state.peers.get(&addr) {
+                Some(entry) => {
+                    if let Err(e) = entry.send(ChannelEvent::Routing(CR)) {
+                        tracing::info!("Error sending the CR. error = {:?}", e);
+                    }
+                },
+                None => { 
+                    tracing::error!("Maybe too early for CR?: {}",addr);
+                }
+            };
+        }
     }
 
     // Process incoming messages until our stream is exhausted by a disconnect.
@@ -72,6 +86,20 @@ pub async fn process(
                     },
                     ChannelEvent::Forward(packet) => {
                         peer.swag_coder.send(packet).await?;
+                    }
+                    ChannelEvent::Routing(type_id) => {
+                        //get current routing table
+                        let rt: Vec<RoutingEntry>;
+                        {
+                            let mut lock = state.lock().await;
+                            rt = lock.get_routing_table(addr).await;
+                        }
+                        let routing_packet = RoutingPacket {
+                            header,
+                            table: rt,
+                        };
+                        tracing::info!("sending a routing packet.");
+                        peer.swag_coder.send(Packet::RoutingPacket(routing_packet,type_id)).await?;
                     }
                     _ => tracing::error!("Received Event: {:#?} is not implemented!", event),
                 } 
@@ -139,6 +167,7 @@ pub async fn process(
                             }
                         }
                         Packet::RoutingPacket(routing_packet, type_id) => {
+                            tracing::info!("received a routing packet.");
                             //we received a routing packet, check which one and handle it:
                             match *type_id {
                                 //routing packet type_ids:

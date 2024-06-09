@@ -70,7 +70,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         // Spawn our handler to be run asynchronously.
         tokio::spawn(async move {
             tracing::info!("accepted connection to {}",addr);
-            if let Err(e) = process(state, stream, addr).await {
+            if let Err(e) = process(state, stream, addr, false).await {
                 tracing::info!("an error occurred; error = {:?}", e);
             }
         });

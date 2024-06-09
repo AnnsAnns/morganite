@@ -94,24 +94,10 @@ pub async fn handle_console( state: Arc<Mutex<Shared>>) -> Result<(), Box<dyn Er
                         //spawn asynchronous handler
                         tokio::spawn(async move {
                         tracing::info!("connected to: {}",destination_addr);
-                        if let Err(e) = process(proccess_state, stream, destination_addr).await {
+                        if let Err(e) = process(proccess_state, stream, destination_addr,true).await {
                             tracing::info!("an error occurred; error = {:?}", e);
                         }
                         });
-                        {
-                            let lock = state.lock().await;
-                            let peer = match lock.peers.get(&addr) {
-                                Some(peer) => peer,
-                                None => { 
-                                    tracing::error!("Maybe too early for CR?: {}",addr);
-                                    continue;
-                                }
-                            };
-                            //send to channel
-                            if let Err(e) = peer.send(ChannelEvent::Routing(CR)) {
-                                tracing::info!("Error sending the CR. error = {:?}", e);
-                            }
-                        }
                     } else if line.starts_with("contacts") {
                         // diplay the routing table
                         {
