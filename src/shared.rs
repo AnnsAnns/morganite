@@ -72,6 +72,10 @@ impl Shared {
         }
         routing_entries
     }
+    ///updates the routing table with the given information
+    pub async fn update_routing_table(&mut self, update: Vec<RoutingEntry>) {
+        todo!();
+    }
 }
 #[tokio::test]
 pub async fn test_get_routing_table(){

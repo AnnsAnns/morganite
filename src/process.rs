@@ -140,7 +140,7 @@ pub async fn process(
                                         }
                                     };
                                     { //check routing table for the specified destination
-                                        let mut lock = state.lock().await;
+                                        let lock = state.lock().await;
                                         //get next destination on route
                                         let routing_entry = match lock.routing_table.get(&destination_addr) {
                                             Some(routing_entry) => routing_entry,
@@ -169,13 +169,37 @@ pub async fn process(
                         Packet::RoutingPacket(routing_packet, type_id) => {
                             tracing::info!("received a routing packet.");
                             //we received a routing packet, check which one and handle it:
+                            let reply_header = SharedHeader {
+                                source_ip: local_addr.ip().to_string(),
+                                source_port: local_addr.port().to_string(),
+                                dest_ip: addr.ip().to_string(),
+                                dest_port: addr.port().to_string(),
+                                ttl: 16,
+                            };
                             match *type_id {
                                 //routing packet type_ids:
-                                CR => tracing::error!("Type ID of 2 not implemented" ),
-                                CRR => tracing::error!("Type ID of 3 not implemented"),
-                                SCC => tracing::error!("Type ID of 4 not implemented"),
-                                SCCR => tracing::error!("Type ID 5 of not implemented"),
-                                STU => tracing::error!("Type ID 6 of not implemented"),
+                                CR | SCC | STU => { //what is the task of STU?
+                                    //need to send a reply containing the routing table:
+                                    let reply_table;
+                                    {
+                                        let mut lock = state.lock().await;
+                                        lock.update_routing_table(routing_packet.table.clone()).await;
+                                        reply_table = lock.get_routing_table(addr).await;
+                                    }
+                                    let reply_routing_packet: RoutingPacket = RoutingPacket{header: reply_header, table: reply_table};
+                                    peer.swag_coder.send(Packet::RoutingPacket(reply_routing_packet,*type_id)).await?;
+                                },
+                                CRR => {
+                                    //update routing table based on received information:
+                                    let mut lock = state.lock().await;
+                                    lock.update_routing_table(routing_packet.table.clone()).await;
+                                },
+                                SCCR => {
+                                    //update routing table based on received information and mark the sender as responding:
+                                    let mut lock = state.lock().await;
+                                    lock.update_routing_table(routing_packet.table.clone()).await;
+                                    lock.routing_table.entry(addr).and_modify(|rt_entry| rt_entry.ttl = true);
+                                },
                                 //undefined type_id:
                                 MESSAGE => tracing::error!("Routing packet with type_id of Message detected!"),
                                 _ => tracing::error!("Type ID not implemented or expected!"),
