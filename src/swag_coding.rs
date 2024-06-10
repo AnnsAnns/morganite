@@ -1,6 +1,6 @@
-use tokio_util::{bytes::{Buf, BytesMut}, codec::{Decoder, Encoder}};
+use tokio_util::{bytes::{Buf, BufMut, BytesMut}, codec::{Decoder, Encoder}};
 
-use crate::protocol::{common_header::{CommonHeader, COMMON_HEADER_LENGTH}, routed_packet::RoutedPacket, routing_packet::RoutingPacket, shared_header::SharedHeader, Packet, CR, CRR, MESSAGE, SCC, SCCR, STU};
+use crate::protocol::{common_header::{CommonHeader, CommonHeaderUnparsed, COMMON_HEADER_LENGTH}, routed_packet::RoutedPacket, routing_packet::RoutingPacket, shared_header::SharedHeader, Packet, CR, CRR, MESSAGE, SCC, SCCR, STU};
 
 // Swag Decoder is a custom decoder for the SWAG protocol
 pub struct SwagCoder {
@@ -40,9 +40,10 @@ impl Decoder for SwagCoder {
                 return Ok(None);
             }
 
-            let header_bytes = src.split_to(COMMON_HEADER_LENGTH);
+            let mut header_bytes = src.split_to(COMMON_HEADER_LENGTH);
+            
             // serde deserialization
-            let header: CommonHeader = match serde_json::from_slice(&header_bytes) {
+            let header_unparsed: CommonHeaderUnparsed = match serde_json::from_slice(&header_bytes) {
                 Ok(header) => header,
                 Err(e) => {
                     return Err(std::io::Error::new(
@@ -51,6 +52,10 @@ impl Decoder for SwagCoder {
                     ));
                 }
             };
+
+            tracing::debug!("Received header unparsed: {:?}", header_unparsed);
+            let header = CommonHeader::from_unparsed(header_unparsed);
+            tracing::debug!("Received header: {:?}", header);
 
             self.last_common_header = Some(header);
             self.has_common_header = true;
@@ -128,7 +133,7 @@ impl Encoder<Packet> for SwagCoder {
     type Error = std::io::Error;
     
     fn encode(&mut self, item: Packet, dst: &mut BytesMut) -> Result<(), Self::Error> {
-        let bytes = match item.clone() {
+        let payload_bytes = match item.clone() {
             Packet::RoutingPacket(packet,_) => {
                 let packet_bytes = match serde_json::to_vec(&packet) {
                     Ok(bytes) => bytes,
@@ -158,18 +163,18 @@ impl Encoder<Packet> for SwagCoder {
         };
 
         // Calculate the checksum
-        let checksum = crc32fast::hash(&bytes);
-        let padded_checksum = format!("{:010}", checksum); 
+        let checksum = crc32fast::hash(&payload_bytes);
         // Create the common header
         let header = CommonHeader {
-                length: bytes.len() as u16,
+                length: payload_bytes.len() as u16,
                 crc32: checksum,
                 type_id: match item {
                     Packet::RoutingPacket(_,type_id) => type_id,
                     Packet::RoutedPacket(_) => MESSAGE,
                 },
         };
-        let header_string = serde_json::to_string(&header).unwrap();
+        let header_stringify = CommonHeaderUnparsed::new(header);
+        let header_string = serde_json::to_string(&header_stringify).unwrap();
         let header_bytes = header_string.as_bytes();
 
         if header_bytes.len() > COMMON_HEADER_LENGTH {
@@ -177,14 +182,21 @@ impl Encoder<Packet> for SwagCoder {
                 std::io::ErrorKind::Other,
                 format!("Common header too large: {} - Should be {}", header_bytes.len(), COMMON_HEADER_LENGTH)
             ));
+        } else if header_bytes.len() < COMMON_HEADER_LENGTH {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                format!("Common header too small: {} - Should be {}", header_bytes.len(), COMMON_HEADER_LENGTH)
+            ));
         }
         
         // Reserve space for the common header & packet
-        dst.reserve(COMMON_HEADER_LENGTH + bytes.len());
+        dst.reserve(COMMON_HEADER_LENGTH + payload_bytes.len());
 
-        // Write the common header & packet
+        // Write the common header
         dst.extend_from_slice(&header_bytes);
-        dst.extend_from_slice(&bytes);
+
+        // Write the packet
+        dst.extend_from_slice(&payload_bytes);
 
         Ok(())
     }
