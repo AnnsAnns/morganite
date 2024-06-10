@@ -1,6 +1,6 @@
 use tokio_util::{bytes::{Buf, BytesMut}, codec::{Decoder, Encoder}};
 
-use crate::protocol::{common_header::{CommonHeader, InnerCommonHeader, COMMON_HEADER_LENGTH}, routed_packet::RoutedPacket, routing_packet::RoutingPacket, shared_header::SharedHeader, Packet, CR, CRR, MESSAGE, SCC, SCCR, STU};
+use crate::protocol::{common_header::{CommonHeader, COMMON_HEADER_LENGTH}, routed_packet::RoutedPacket, routing_packet::RoutingPacket, shared_header::SharedHeader, Packet, CR, CRR, MESSAGE, SCC, SCCR, STU};
 
 // Swag Decoder is a custom decoder for the SWAG protocol
 pub struct SwagCoder {
@@ -59,7 +59,7 @@ impl Decoder for SwagCoder {
             let header = self.last_common_header.unwrap();
 
             // Check whether we have enough bytes to read the packet
-            let packet_length = header.header.length as usize;
+            let packet_length = header.length as usize;
             if src.len() < packet_length {
                 return Ok(None);
             }
@@ -68,15 +68,15 @@ impl Decoder for SwagCoder {
 
             // Verify the checksum
             let checksum = crc32fast::hash(&packet_bytes);
-            if checksum != header.header.crc32 {
+            if checksum != header.crc32 {
                 return Err(std::io::Error::new(
                     std::io::ErrorKind::Other,
-                    format!("Checksum mismatch: {} != {}", checksum, header.header.crc32)
+                    format!("Checksum mismatch: {} != {}", checksum, header.crc32)
                 ));
             }
 
             // Deserialize the packet
-            let packet = match header.header.type_id {
+            let packet = match header.type_id {
                 CR|CRR|SCC|SCCR|STU => {
                     let packet: RoutingPacket = match serde_json::from_slice(&packet_bytes) {
                         Ok(packet) => packet,
@@ -89,7 +89,7 @@ impl Decoder for SwagCoder {
                     };
 
                     self.has_common_header = false;
-                    Packet::RoutingPacket(packet, header.header.type_id)
+                    Packet::RoutingPacket(packet, header.type_id)
                 },
                 MESSAGE => {
                     let packet: RoutedPacket = match serde_json::from_slice(&packet_bytes) {
@@ -108,7 +108,7 @@ impl Decoder for SwagCoder {
                 _ => {
                     return Err(std::io::Error::new(
                         std::io::ErrorKind::Other,
-                        format!("Unknown packet type: {}", header.header.type_id)
+                        format!("Unknown packet type: {}", header.type_id)
                     ));
                 }
             };
@@ -162,14 +162,12 @@ impl Encoder<Packet> for SwagCoder {
         let padded_checksum = format!("{:010}", checksum); 
         // Create the common header
         let header = CommonHeader {
-            header: InnerCommonHeader {
                 length: bytes.len() as u16,
                 crc32: checksum,
                 type_id: match item {
                     Packet::RoutingPacket(_,type_id) => type_id,
                     Packet::RoutedPacket(_) => MESSAGE,
                 },
-            },
         };
         let header_string = serde_json::to_string(&header).unwrap();
         let header_bytes = header_string.as_bytes();
