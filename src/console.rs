@@ -105,6 +105,7 @@ pub async fn handle_console( state: Arc<Mutex<Shared>>) -> Result<(), Box<dyn Er
                             for entry in lock.routing_table.iter_mut() {
                                 if entry.0 != &client_addr {
                                     tracing::info!("connected to: {}",entry.0);
+                                    tracing::info!("with: {:?}",entry.1);
                                 }
                             }
                         }

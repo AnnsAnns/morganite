@@ -1,4 +1,5 @@
 use channel_events::ChannelEvent;
+use futures::stream::TryForEach;
 use swag_coding::SwagCoder;
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::{mpsc, Mutex};
@@ -92,7 +93,7 @@ pub async fn process(
                         let rt: Vec<RoutingEntry>;
                         {
                             let mut lock = state.lock().await;
-                            rt = lock.get_routing_table(addr).await;
+                            rt = lock.get_routing_table(addr,local_addr).await;
                         }
                         let routing_packet = RoutingPacket {
                             header,
@@ -123,7 +124,6 @@ pub async fn process(
                             let mut new_event = ChannelEvent::Unknown;
                             //we received a message, check who's the destination:
                             let packet_destination = format!("{}:{}",routed_packet.header.dest_ip,routed_packet.header.dest_port);
-                            tracing::info!("local: {}, dest: {}",local_addr, packet_destination);
                             match  packet_destination == local_addr.to_string() {
                                 true => {
                                     //message is for us, display message
@@ -150,7 +150,13 @@ pub async fn process(
                                             }
                                         };
                                         //get channel to next on route
-                                        let peer = match lock.peers.get(&routing_entry.next) {
+                                        let route_target;
+                                        if routing_entry.hop_count == 1{
+                                            route_target = destination_addr;
+                                        } else {
+                                            route_target = routing_entry.next;
+                                        }
+                                        let peer = match lock.peers.get(&route_target) {
                                             Some(peer) => peer,
                                             None => { 
                                                 tracing::error!("Forwarding: No channel to destination available: {}",routing_entry.next);
@@ -184,10 +190,13 @@ pub async fn process(
                                     {
                                         let mut lock = state.lock().await;
                                         lock.update_routing_table(routing_packet.table.clone()).await;
-                                        reply_table = lock.get_routing_table(addr).await;
+                                        reply_table = lock.get_routing_table(addr, local_addr).await;
                                     }
                                     let reply_routing_packet: RoutingPacket = RoutingPacket{header: reply_header, table: reply_table};
-                                    peer.swag_coder.send(Packet::RoutingPacket(reply_routing_packet,*type_id)).await?;
+                                    if *type_id == CR || *type_id == SCC{
+                                        let id = type_id + 1;
+                                        peer.swag_coder.send(Packet::RoutingPacket(reply_routing_packet, id)).await?;
+                                    }
                                 },
                                 CRR => {
                                     //update routing table based on received information:
