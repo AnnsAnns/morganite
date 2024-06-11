@@ -22,6 +22,7 @@ pub type Tx = mpsc::UnboundedSender<ChannelEvent>;
 /// Shorthand for the receive half of the message channel.
 pub type Rx = mpsc::UnboundedReceiver<ChannelEvent>;
 
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct RoutingTableEntry {
     pub next: SocketAddr,
     pub hop_count: i32,
@@ -65,16 +66,38 @@ impl Shared {
             routing_entries.push(RoutingEntry {
                 target_ip: entry.0.ip().to_string(),
                 target_port: entry.0.port(),
-                next_ip: entry.1.next.ip().to_string(),
-                next_port: entry.1.next.port(),
-                hop_count: entry.1.hop_count,
+                next_ip: "127.0.0.1".to_string(), //our address since we only add connections through us to the update
+                next_port: 6142, //replace with const we set in main?
+                hop_count: entry.1.hop_count+1,
             });
         }
         routing_entries
     }
-    ///updates the routing table with the given information
+    /// updates the routing table with the given information
     pub async fn update_routing_table(&mut self, update: Vec<RoutingEntry>) {
-        todo!();
+        for new_entry in update.iter() {
+            // get target
+            let target = (new_entry.target_ip.clone()+":"+&new_entry.target_port.to_string()).parse::<SocketAddr>().unwrap();
+
+            match self.routing_table.get(&target) {
+                // if in Routing Table
+                Some(old_entry) => {
+                    // compare hop_count to target in Routing Table and in update
+                    let hop_count = new_entry.hop_count;
+                    if hop_count <= old_entry.hop_count {
+                        let next =(new_entry.next_ip.clone()+":"+&new_entry.next_port.to_string()).parse::<SocketAddr>().unwrap();
+                        // if update is shorter: replace/change entry in Routing Table
+                        self.routing_table.insert(target, RoutingTableEntry{next,hop_count,ttl: true});
+                    }
+                }
+                // if not in Routing Table: create new entry to target through source
+                None => {
+                    let hop_count = new_entry.hop_count;
+                    let next =(new_entry.next_ip.clone()+":"+&new_entry.next_port.to_string()).parse::<SocketAddr>().unwrap();
+                    self.routing_table.insert(target, RoutingTableEntry{next,hop_count,ttl: true});
+                }
+            }
+        }
     }
 }
 #[tokio::test]
@@ -86,5 +109,21 @@ pub async fn test_get_routing_table(){
     shared.routing_table.insert("127.0.0.1:1235".parse::<SocketAddr>().unwrap(),RoutingTableEntry{next:"127.0.0.1:6666".parse::<SocketAddr>().unwrap(), hop_count:2, ttl:true});
     shared.routing_table.insert("127.0.0.1:12344".parse::<SocketAddr>().unwrap(),RoutingTableEntry{next:"127.0.0.1:6666".parse::<SocketAddr>().unwrap(), hop_count:2, ttl:true});
     
-    assert_eq!(vec![RoutingEntry{target_ip: "127.0.0.1".to_string(),target_port:12345,next_ip:"127.0.0.1".to_string(),next_port:12346,hop_count:2}],shared.get_routing_table(target).await);
+    assert_eq!(vec![RoutingEntry{target_ip: "127.0.0.1".to_string(),target_port:12345,next_ip:"127.0.0.1".to_string(),next_port:6142,hop_count:3}],shared.get_routing_table(target).await);
+    
+    let update = vec![RoutingEntry{target_ip: "127.0.0.1".to_string(),target_port:11111,next_ip:"127.0.0.1".to_string(),next_port:12345,hop_count:3},
+        RoutingEntry{target_ip: "127.0.0.1".to_string(),target_port:11112,next_ip:"127.0.0.1".to_string(),next_port:12345,hop_count:4},
+        RoutingEntry{target_ip: "127.0.0.1".to_string(),target_port:11113,next_ip:"127.0.0.1".to_string(),next_port:12345,hop_count:5}];
+    shared.update_routing_table(update).await;
+    //vergleichsmap
+    let mut rt: HashMap<SocketAddr, RoutingTableEntry> = HashMap::new();
+    rt.insert("127.0.0.1:12345".parse::<SocketAddr>().unwrap(),RoutingTableEntry{next:"127.0.0.1:12346".parse::<SocketAddr>().unwrap(), hop_count:2, ttl:true});
+    rt.insert("127.0.0.1:6666".parse::<SocketAddr>().unwrap(),RoutingTableEntry{next:"127.0.0.1:1236".parse::<SocketAddr>().unwrap(), hop_count:2, ttl:true});
+    rt.insert("127.0.0.1:1235".parse::<SocketAddr>().unwrap(),RoutingTableEntry{next:"127.0.0.1:6666".parse::<SocketAddr>().unwrap(), hop_count:2, ttl:true});
+    rt.insert("127.0.0.1:12344".parse::<SocketAddr>().unwrap(),RoutingTableEntry{next:"127.0.0.1:6666".parse::<SocketAddr>().unwrap(), hop_count:2, ttl:true});
+    rt.insert("127.0.0.1:11111".parse::<SocketAddr>().unwrap(),RoutingTableEntry{next:"127.0.0.1:12345".parse::<SocketAddr>().unwrap(), hop_count:3, ttl:true});
+    rt.insert("127.0.0.1:11112".parse::<SocketAddr>().unwrap(),RoutingTableEntry{next:"127.0.0.1:12345".parse::<SocketAddr>().unwrap(), hop_count:4, ttl:true});
+    rt.insert("127.0.0.1:11113".parse::<SocketAddr>().unwrap(),RoutingTableEntry{next:"127.0.0.1:12345".parse::<SocketAddr>().unwrap(), hop_count:5, ttl:true});
+
+    assert_eq!(shared.routing_table,rt);
 }
