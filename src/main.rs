@@ -20,10 +20,12 @@ mod protocol;
 mod swag_coding;
 mod channel_events;
 mod console;
+mod heartbeat;
 mod process;
 mod peer;
 mod shared;
 
+/// Use Tokio Runtime, Multi-Threaded with a Thread Pool based on the number of cores available
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
     // construct a subscriber that prints formatted traces to stdout
@@ -55,6 +57,15 @@ async fn main() -> Result<(), Box<dyn Error>> {
     tokio::spawn(async move {
         tracing::debug!("created TUI task");
         if let Err(e) = handle_console(state_tui).await {
+            tracing::info!("an error occurred; error = {:?}", e);
+        }
+    });
+
+    // Spawn heartbeat task
+    let heartbeat_state = Arc::clone(&state);
+    tokio::spawn(async move {
+        tracing::debug!("created heartbeat task");
+        if let Err(e) = heartbeat::heartbeat(heartbeat_state).await {
             tracing::info!("an error occurred; error = {:?}", e);
         }
     });

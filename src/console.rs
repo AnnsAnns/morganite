@@ -33,8 +33,11 @@ pub async fn handle_console( state: Arc<Mutex<Shared>>) -> Result<(), Box<dyn Er
         tokio::select! {
             //another async task has a message to be send to the user
             Some(event) = rx.recv() => {
-                //display message
-                tracing::info!("{:#?}", event);
+                // If the channel event is type routing, ignore it
+                match event {
+                    ChannelEvent::Routing(val) => (),
+                    _ => tracing::info!("Received event: {:?}", event),
+                }
             }
             //get the next line whenever theres a new one:
             result = reader.next() => match result {

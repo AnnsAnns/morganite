@@ -24,7 +24,7 @@ impl Decoder for SwagCoder {
 
     type Error = std::io::Error;
 
-    fn decode(&mut self, src: &mut tokio_util::bytes::BytesMut) -> Result<Option<Self::Item>, Self::Error> {
+    fn decode(&mut self, src: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
         // Check whether the buffer is too large
         if src.len() > MAX_ACCEPTED_LEN {
             return Err(std::io::Error::new(

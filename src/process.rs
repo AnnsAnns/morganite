@@ -14,6 +14,7 @@ use std::io;
 use std::net::SocketAddr;
 use std::sync::Arc;
 
+use crate::heartbeat::POISE_UNREACHABLE;
 use crate::peer::Peer;
 use crate::protocol::routing_packet::{RoutingEntry, RoutingPacket};
 use crate::protocol::Packet;
@@ -150,13 +151,7 @@ pub async fn process(
                                             }
                                         };
                                         //get channel to next on route
-                                        let route_target;
-                                        if routing_entry.hop_count == 1{
-                                            route_target = destination_addr;
-                                        } else {
-                                            route_target = routing_entry.next;
-                                        }
-                                        let peer = match lock.peers.get(&route_target) {
+                                        let peer = match lock.peers.get(&routing_entry.next) {
                                             Some(peer) => peer,
                                             None => { 
                                                 tracing::error!("Forwarding: No channel to destination available: {}",routing_entry.next);
@@ -235,7 +230,13 @@ pub async fn process(
     {
         let mut state = state.lock().await;
         state.peers.remove(&addr);
-        state.routing_table.remove(&addr);
+        
+        // Poise reverse routing table
+        for (dest, rt_entry) in state.routing_table.iter_mut() {
+            if rt_entry.next == addr {
+                rt_entry.hop_count = POISE_UNREACHABLE;
+            }
+        }
 
         let msg = format!("{} has left the chat", addr);
         tracing::info!("{}", msg);
