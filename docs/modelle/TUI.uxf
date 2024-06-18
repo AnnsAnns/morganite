@@ -1,0 +1,31 @@
+<diagram program="umletino" version="15.1"><zoom_level>10</zoom_level><help_text>Space for diagram notes</help_text><element><id>UMLState</id><coordinates><x>370</x><y>210</y><w>140</w><h>60</h></coordinates><panel_attributes>Handle Input
+--
+entry: getInput(stdio)</panel_attributes><additional_attributes></additional_attributes></element><element><id>UMLSpecialState</id><coordinates><x>430</x><y>130</y><w>20</w><h>20</h></coordinates><panel_attributes>type=initial</panel_attributes><additional_attributes></additional_attributes></element><element><id>Relation</id><coordinates><x>430</x><y>260</y><w>90</w><h>150</h></coordinates><panel_attributes>lt=-&gt;
+CMD_EXIT</panel_attributes><additional_attributes>10;10;10;130</additional_attributes></element><element><id>Relation</id><coordinates><x>430</x><y>140</y><w>30</w><h>90</h></coordinates><panel_attributes>lt=-&gt;
+</panel_attributes><additional_attributes>10;10;10;70</additional_attributes></element><element><id>UMLSpecialState</id><coordinates><x>430</x><y>520</y><w>20</w><h>20</h></coordinates><panel_attributes>type=final</panel_attributes><additional_attributes></additional_attributes></element><element><id>UMLState</id><coordinates><x>800</x><y>310</y><w>160</w><h>70</h></coordinates><panel_attributes>Send Message
+--
+entry: sendMessage(input)</panel_attributes><additional_attributes></additional_attributes></element><element><id>Relation</id><coordinates><x>460</x><y>110</y><w>490</w><h>220</h></coordinates><panel_attributes>lt=-&gt;
+CMD_SEND</panel_attributes><additional_attributes>10;100;10;20;470;20;470;200</additional_attributes></element><element><id>UMLState</id><coordinates><x>580</x><y>310</y><w>160</w><h>70</h></coordinates><panel_attributes>Connect To
+--
+entry: connectTo(
+										input[1], input[2])</panel_attributes><additional_attributes></additional_attributes></element><element><id>Relation</id><coordinates><x>500</x><y>210</y><w>220</w><h>120</h></coordinates><panel_attributes>lt=-&gt;
+CMD_CONNECT</panel_attributes><additional_attributes>10;20;200;20;200;100</additional_attributes></element><element><id>Relation</id><coordinates><x>490</x><y>140</y><w>370</w><h>190</h></coordinates><panel_attributes>lt=-&gt;
+SUCCESS</panel_attributes><additional_attributes>350;170;350;20;10;20;10;70</additional_attributes></element><element><id>Relation</id><coordinates><x>500</x><y>230</y><w>150</w><h>100</h></coordinates><panel_attributes>lt=-&gt;
+SUCCESS</panel_attributes><additional_attributes>130;80;130;20;10;20</additional_attributes></element><element><id>UMLState</id><coordinates><x>380</x><y>390</y><w>120</w><h>70</h></coordinates><panel_attributes>Handle Error
+--
+entry: cleanup()</panel_attributes><additional_attributes></additional_attributes></element><element><id>Relation</id><coordinates><x>430</x><y>450</y><w>100</w><h>90</h></coordinates><panel_attributes>lt=-&gt;
+SHUTDOWN</panel_attributes><additional_attributes>10;10;10;70</additional_attributes></element><element><id>Relation</id><coordinates><x>210</x><y>130</y><w>220</w><h>100</h></coordinates><panel_attributes>lt=-&gt;
+CMD_PRINT_ROUTINGTABLE  \
+println!("[#:?}", rounting_table)
+cbase=lu</panel_attributes><additional_attributes>200;80;200;30;170;30;170;80</additional_attributes></element><element><id>Relation</id><coordinates><x>490</x><y>370</y><w>190</w><h>60</h></coordinates><panel_attributes>lt=-&gt;
+ERROR</panel_attributes><additional_attributes>170;10;170;40;10;40</additional_attributes></element><element><id>Relation</id><coordinates><x>490</x><y>370</y><w>410</w><h>90</h></coordinates><panel_attributes>lt=-&gt;
+ERROR</panel_attributes><additional_attributes>390;10;390;70;10;70</additional_attributes></element><element><id>UMLNote</id><coordinates><x>200</x><y>390</y><w>140</w><h>70</h></coordinates><panel_attributes>TUI FSM
+v1.1
+By: Tom
+bg=blue</panel_attributes><additional_attributes></additional_attributes></element><element><id>Relation</id><coordinates><x>200</x><y>200</y><w>190</w><h>60</h></coordinates><panel_attributes>lt=-&gt;
+CMD_HELP \
+print_help()
+cbase=lu</panel_attributes><additional_attributes>170;20;80;20;80;40;170;40</additional_attributes></element><element><id>Relation</id><coordinates><x>180</x><y>260</y><w>260</w><h>90</h></coordinates><panel_attributes>lt=-&gt;
+CMD_INVALID \
+println!("Invalid Command")
+cbase=lu</panel_attributes><additional_attributes>210;10;210;50;160;50;160;70;240;70;240;10</additional_attributes></element></diagram>

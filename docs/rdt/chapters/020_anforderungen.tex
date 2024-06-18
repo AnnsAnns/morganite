@@ -1,0 +1,48 @@
+\section{Anforderungen}
+
+\begin{tabular}{|c|p{13.5cm}|}
+\hline
+Requirement Nr. & Beschreibung
+\\ \hline
+
+REQ\_1 & Der Client erfüllt die Vorgaben des Chatprotokolls zur Kommunikation mit anderen Clients\\
+\hline
+REQ\_2 & Der Client muss mindestens per Terminal als einfachstes Interface bedienbar sein \\
+\hline
+REQ\_3 & Der Client muss ein\- und ausschaltbar sein\\
+\hline
+REQ\_5 & Der Client muss Verbindungen zu anderen Clients, die das Chatprotokoll erfüllen, aufbauen können\\
+\hline
+REQ\_6 & Die Verbindungen zu anderen Clients muss per IPv4 und über TCP Sockets geschehen\\
+\hline
+REQ\_7 & Der Client muss Nachrichten an verfügbare Clients senden können\\
+\hline
+REQ\_8 & Der Client muss Chatnachrichten von verfügbaren Clients empfangen und diese im Terminal zusammen mit dem Sender ausgeben\\
+\hline
+REQ\_9 & Der Client muss alle verfügbaren Clients ausgeben können\\
+\hline
+REQ\_10 & Der Client muss an andere Clients addressierte Nachrichten an verbundene Clients weiterleiten können\\
+\hline
+REQ\_11 & Der Client muss eine Routingtabelle nach Vorgaben des Chatprotokolls pflegen um Kommunikation zu nicht direkt verbundenen Client zu ermöglichen\\
+\hline
+REQ\_12 & Der Client muss alle ?? Sekunden Routingupdates(siehe Chatprotokoll) nach Vorgaben des Chatprotokolls an verbundene Clients senden\\
+\hline
+REQ\_13 & Der Client muss die Integrität von Nachrichten mithilfe von CRC32 prüfen und bei Fehlern die Nachricht entsorgen und die Verbindung zum Sender der Nachricht beendet\\
+\hline
+REQ\_14 & Wenn ein Kommunikationspartner auf eine Routingtabellenanfrage nicht reagiert, muss der Client diesen in der Routingtabelle als Unerreichbar (Siehe Poise Reverse) markieren\\
+\hline
+REQ\_15 & Der Client muss bei fehlerfreien Routingpaketen seine Routingtabelle aktualisieren, indem neue Routen als Einträge hinzugefügt werden und ggf alte Einträge aktualisiert wenn der Hopcount der Route geringer oder gelöscht werden wenn der Hopcount der Route höher geworden ist.\\
+\hline
+\end{tabular}
+Das Chatprotokoll ist hier zu finden: \url{https://github.com/HAW-Rn/protocol}
+
+\subsection{Use Cases}
+
+Ergänzend zu den Use Cases des Protokolls hier die Client-spezifischen Use Cases:
+
+\begin{itemize}
+\item \textbf{send message:} Bei Eingabe des Befehls 'msg <IP> <Port> <text>' verpackt der Client den in die Console eingegebenen Text in ein dem Catprotokoll ensprechenden Paket addressiert an den angegebenen Client und versendet es über die kürzeste im Routing Table vorhandene Route zum Ziel Client.  
+\item \textbf{receive message:} Der Client empfängt die Nachricht, verifiziert dessen Inhalt mithilfe von crc32 und prüft die Destination IP+Port. Daraufhin leidet der Client das Paket weiter wenn es nicht an den Client addressiert ist oder stellt es in der Console dar.
+\item \textbf{display message:} Der Client stellt den Text zusammen mit dem Nicknamen als 'nickname: text' dar.
+\item \textbf{display available participants:} Bei Eingabe des Befehls 'contacts' in das Terminal gibt der Client eine Liste von direkt erreichbaren und über direktverbundene erreichbaren Clients in der Console aus.
+\end{itemize}
