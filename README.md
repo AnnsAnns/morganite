@@ -1,8 +1,10 @@
 # Morganite
 
-Morganite is a chat client for a pseudo chat protocol developed for our uni course. It is written in Rust using Tokio TCP Sockets and Serde for serialization and deserialization of messages.
+Morganite is a chat client for a [pseudo chat protocol](https://github.com/HAW-RN/protocol). It is written in Rust using Tokio TCP Sockets and Serde for serialization and deserialization of messages.
 
 The protocol works in a serverless manner while also only having a direct connection to some of the clients, which requires routing using Distance Vector Routing with Poise Reverse & Split Horizon to mitigate routing loops.
+
+It employs worker pools for handling incoming messages and sending messages to other clients. It also uses a timer to periodically send routing updates to other clients and channels to communicate between the workers and the main thread.
 
 For the exact protocol specification see [HERE](https://github.com/HAW-RN/protocol).
 
