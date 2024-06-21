@@ -86,7 +86,15 @@ pub async fn process(
                         };
                         peer.swag_coder.send(Packet::RoutedPacket(routed_packet)).await?;
                     },
-                    ChannelEvent::Forward(packet) => {
+                    //we received a message to be forwarded
+                    ChannelEvent::Forward(mut packet) => {
+                        //decrease ttl and send package
+                        match &mut packet {
+                            Packet::RoutedPacket(routed_packet) => {
+                                routed_packet.header.ttl -= 1;
+                            },
+                            _ => {},
+                        }
                         peer.swag_coder.send(packet).await?;
                     }
                     ChannelEvent::Routing(type_id) => {
@@ -122,7 +130,6 @@ pub async fn process(
                     //assess what kind of packet we received:
                     match &packet {
                         Packet::RoutedPacket(routed_packet) => {
-                            let mut new_event = ChannelEvent::Unknown;
                             //we received a message, check who's the destination:
                             let packet_destination = format!("{}:{}",routed_packet.header.dest_ip,routed_packet.header.dest_port);
                             match  packet_destination == local_addr.to_string() {
@@ -132,36 +139,38 @@ pub async fn process(
                                 },
                                 //message is for someone else, try forwarding it:
                                 false => {
-                                    //parse destination to SocketAddr
-                                    let destination_addr = match packet_destination.parse::<SocketAddr>() {
-                                        Ok(socket) => socket,
-                                        Err(e) => {
-                                            tracing::error!("Error parsing destination to forward to: {}",e);
-                                            continue;
-                                        }
-                                    };
-                                    { //check routing table for the specified destination
-                                        let lock = state.lock().await;
-                                        //get next destination on route
-                                        let routing_entry = match lock.routing_table.get(&destination_addr) {
-                                            Some(routing_entry) => routing_entry,
-                                            None => {
-                                                tracing::error!("Forwarding: No route to destination available: {}",destination_addr);
+                                    if routed_packet.header.ttl > 0 {
+                                        //parse destination to SocketAddr
+                                        let destination_addr = match packet_destination.parse::<SocketAddr>() {
+                                            Ok(socket) => socket,
+                                            Err(e) => {
+                                                tracing::error!("Error parsing destination to forward to: {}",e);
                                                 continue;
                                             }
                                         };
-                                        //get channel to next on route
-                                        let peer = match lock.peers.get(&routing_entry.next) {
-                                            Some(peer) => peer,
-                                            None => { 
-                                                tracing::error!("Forwarding: No channel to destination available: {}",routing_entry.next);
-                                                continue;
+                                        { //check routing table for the specified destination
+                                            let lock = state.lock().await;
+                                            //get next destination on route
+                                            let routing_entry = match lock.routing_table.get(&destination_addr) {
+                                                Some(routing_entry) => routing_entry,
+                                                None => {
+                                                    tracing::error!("Forwarding: No route to destination available: {}",destination_addr);
+                                                    continue;
+                                                }
+                                            };
+                                            //get channel to next on route
+                                            let peer = match lock.peers.get(&routing_entry.next) {
+                                                Some(peer) => peer,
+                                                None => { 
+                                                    tracing::error!("Forwarding: No channel to destination available: {}",routing_entry.next);
+                                                    continue;
+                                                }
+                                            };
+                                            //internal message to forward the packet as is
+                                            let new_event = ChannelEvent::Forward(packet);
+                                            if let Err(e) = peer.send(new_event) {
+                                                tracing::info!("Error sending your message. error = {:?}", e);
                                             }
-                                        };
-                                        //internal message to forward the packet as is
-                                        new_event = ChannelEvent::Forward(packet);
-                                        if let Err(e) = peer.send(new_event) {
-                                            tracing::info!("Error sending your message. error = {:?}", e);
                                         }
                                     }
                                 }
