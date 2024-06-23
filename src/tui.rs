@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::io::Result;
 use std::net::SocketAddr;
 use std::{
@@ -11,16 +12,19 @@ use crossterm::{
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
     ExecutableCommand,
 };
-use ratatui::widgets::{List, ListDirection};
+use ratatui::layout::Size;
+use ratatui::widgets::{BorderType, List, ListDirection};
 use ratatui::{
     layout::{Constraint, Direction, Layout},
     prelude::{CrosstermBackend, Stylize, Terminal},
     widgets::{Block, Borders, Paragraph},
     Frame,
 };
+use tui_nodes::{Connection, NodeGraph, NodeLayout};
 use std::sync::mpsc::Sender;
 use tokio::sync::{mpsc, Mutex};
 
+use crate::shared::RoutingTableEntry;
 use crate::{
     channel_events::{ChannelEvent, Commands},
     shared::{Rx, Shared, Tx},
@@ -32,6 +36,7 @@ struct TUI {
     exit: bool,
     receiver: Rx,
     sender: Sender<ChannelEvent>,
+    contacts: HashMap<SocketAddr, RoutingTableEntry>,
 }
 
 fn string_to_socketaddr(ip: &str, port: &str) -> Option<SocketAddr> {
@@ -94,6 +99,7 @@ pub fn tui(receiver: Rx) -> Result<()> {
         log: Vec::new(),
         sender: fake_tx,
         exit: false,
+        contacts: HashMap::new(),
     };
 
     // Main Loop
@@ -118,6 +124,7 @@ pub fn tui(receiver: Rx) -> Result<()> {
                 }
                 ChannelEvent::Contacts(contacts) => {
                     tui.log.push(format!("Received contacts: {:?}", contacts));
+                    tui.contacts = contacts;
                 }
                 ChannelEvent::Join(addr) => {
                     tui.log.push(format!("New User joined @ {}", addr));
@@ -187,6 +194,37 @@ pub fn tui(receiver: Rx) -> Result<()> {
     Ok(())
 }
 
+fn draw_nodes(layout_size: Size, tui: &TUI) -> NodeGraph {
+    let mut nodes = Vec::new();
+    let mut connections = Vec::new();
+
+    let routing_table_size = tui.contacts.len();
+
+    nodes.push(NodeLayout::new((layout_size.width, layout_size.height))
+        .with_title("This Node"));
+
+    for (addr, entry) in tui.contacts.iter() {
+        let node = NodeLayout::new((layout_size.width/routing_table_size as u16, layout_size.height / routing_table_size as u16)).with_border_type(BorderType::Thick);
+        nodes.push(node);
+    }
+
+    for (addr, entry) in tui.contacts.iter() {
+        // Get the index of the current address with tui.contacts
+        let index = tui.contacts.iter().position(|(a, _)| a == addr).unwrap();
+        // Get the index of the entry.next address with tui.contacts
+        let next_index = match tui.contacts.iter().position(|(a, _)| a == &entry.next) {
+            Some(idx) => idx,
+            None => 0,
+        };
+        let connection = Connection::new(index, 0, next_index, 0);
+        connections.push(connection);
+    }
+
+    let mut graph = NodeGraph::new(nodes, connections, layout_size.width as usize, layout_size.height as usize);
+    graph.calculate();
+    graph
+}
+
 fn draw_ui(frame: &mut Frame, tui: &TUI) -> Result<()> {
     let root_layout = Layout::default()
         .direction(Direction::Vertical)
@@ -204,11 +242,12 @@ fn draw_ui(frame: &mut Frame, tui: &TUI) -> Result<()> {
         root_layout[0],
     );
 
-    let peers = "Peers: \n";
-    frame.render_widget(
-        Paragraph::new(peers).block(Block::new().borders(Borders::ALL)),
-        top_inner_layout[1],
-    );
+    let graph = draw_nodes(top_inner_layout[1].as_size(), tui);
+    let zones = graph.split(top_inner_layout[1]);
+	for (idx, ea_zone) in zones.into_iter().enumerate() {
+		frame.render_widget(Paragraph::new(format!("{idx}")), ea_zone);
+	}
+    frame.render_stateful_widget(draw_nodes(top_inner_layout[1].as_size(), tui), top_inner_layout[1], &mut ());
 
     // Only showcase the last 10 logs
     let mut log = tui.log.clone();
