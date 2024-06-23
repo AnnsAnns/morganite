@@ -220,7 +220,7 @@ pub fn tui(receiver: Rx) -> Result<()> {
                     }
                 }
                 _ => {
-                    tui.log.push("Unknown event".to_string());
+                    // Do nothing
                 }
             };
         }
