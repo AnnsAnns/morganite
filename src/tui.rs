@@ -11,6 +11,7 @@ use crossterm::{
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
     ExecutableCommand,
 };
+use ratatui::widgets::{List, ListDirection};
 use ratatui::{
     layout::{Constraint, Direction, Layout},
     prelude::{CrosstermBackend, Stylize, Terminal},
@@ -115,6 +116,15 @@ pub fn tui(receiver: Rx) -> Result<()> {
                     tui.log.push("Received command receiver".to_string());
                     tui.sender = tx;
                 }
+                ChannelEvent::Contacts(contacts) => {
+                    tui.log.push(format!("Received contacts: {:?}", contacts));
+                }
+                ChannelEvent::Join(addr) => {
+                    tui.log.push(format!("New User joined @ {}", addr));
+                }
+                ChannelEvent::Leave(addr) => {
+                    tui.log.push(format!("User left @ {}", addr));
+                }
                 _ => tui.log.push(format!("Received unknown event: {:?}", event)),
             }
         }
@@ -200,9 +210,12 @@ fn draw_ui(frame: &mut Frame, tui: &TUI) -> Result<()> {
         top_inner_layout[1],
     );
 
-    let log = tui.log.join("\n➡️ ");
+    // Only showcase the last 10 logs
+    let mut log = tui.log.clone();
+    log.reverse();
+
     frame.render_widget(
-        Paragraph::new(format!("Logs:\n ➡️ {}", log)).block(Block::new().borders(Borders::ALL)),
+        List::new(log).block(Block::new().borders(Borders::ALL)).direction(ListDirection::BottomToTop),
         top_inner_layout[0],
     );
     Ok(())
