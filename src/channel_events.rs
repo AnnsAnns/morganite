@@ -1,7 +1,9 @@
+use std::collections::HashMap;
 use std::{net::SocketAddr};
 
 use std::sync::mpsc::Sender;
 
+use crate::shared::RoutingTableEntry;
 use crate::{protocol::Packet, shared::Tx};
 
 #[derive(Debug, Clone, PartialEq)]
@@ -23,7 +25,7 @@ pub enum ChannelEvent {
     Routing(u8), //type id
     Forward(Packet), 
     Command(Commands),
-    Contacts(String),
+    Contacts(HashMap<SocketAddr, RoutingTableEntry>),
     CommandReceiver(Sender<ChannelEvent>),
     Unknown
 }

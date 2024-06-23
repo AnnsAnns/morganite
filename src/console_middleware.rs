@@ -82,20 +82,12 @@ pub async fn handle_console(state: Arc<Mutex<Shared>>) -> Result<(), Box<dyn Err
                                     // Display the routing table
                                     tracing::debug!("Displaying routing table");
                                         let mut state_lock = state.lock().await;
-                                        let mut response = String::from("Current routing table:\n");
-                                        for entry in state_lock.routing_table.iter_mut() {
-                                            if entry.0 != &client_addr {
-                                                response.push_str(&format!("connected to: {} with: {:#?}\n",entry.0, entry.1));
-                                            }
-                                        }
-
-                                        tracing::debug!("Routing table: {:#?}", response);
-
-                                        if let Err(e) = state_lock.console_input_sender.send(ChannelEvent::Contacts(response)) {
-                                            tracing::error!("Error sending response to TUI: {:?}", e);
-                                        }
+                                        let routing_table = state_lock.routing_table.clone();
 
                                         tracing::debug!("Sent routing table to TUI");
+                                        if let Err(e) = state_lock.console_input_sender.send(ChannelEvent::Contacts(routing_table)) {
+                                            tracing::error!("Error sending routing table to TUI: {:?}", e);
+                                        }
                                 },
                                 Commands::Connect(addr) => {
                                     // Connect to specified client
