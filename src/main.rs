@@ -8,8 +8,9 @@ use tokio_stream::StreamExt;
 use tokio_util::codec::{Framed, FramedRead, LinesCodec};
 
 use futures::SinkExt;
+use tracing::Level;
 use std::collections::HashMap;
-use std::env;
+use std::{env, thread};
 use std::error::Error;
 use std::io;
 use std::net::SocketAddr;
@@ -44,8 +45,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let file_appender = tracing_appender::rolling::never("logs", "morganite.log");
     // use that subscriber to process traces emitted after this point
     tracing_subscriber::fmt()
-        .fmt(f)
+        .compact()
         .with_writer(file_appender)
+        .with_max_level(Level::DEBUG)
         .init();
 
     // Create the shared state. This is how all the peers communicate.
@@ -54,8 +56,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     // `state` handle is cloned and passed into the task that processes the
     // client connection.
     let (console_input_tx, console_input_rx) = mpsc::unbounded_channel();
-    let (console_cmd_tx, console_cmd_rx) = mpsc::unbounded_channel();
-    let state = Arc::new(Mutex::new(Shared::new(console_input_tx, console_cmd_rx)));
+    let state = Arc::new(Mutex::new(Shared::new(console_input_tx)));
 
     let addr = env::args()
         .nth(1)
@@ -77,14 +78,18 @@ async fn main() -> Result<(), Box<dyn Error>> {
         }
     });
 
-    let new_tui = Arc::clone(&state);
+    // Spawn console middleware
+    let console_state = Arc::clone(&state);
     tokio::spawn(async move {
-        tracing::debug!("created TUI task");
-        if let Err(e) = tui::tui(console_input_rx, console_cmd_tx) {
+        tracing::debug!("created console middleware task");
+        if let Err(e) = handle_console(console_state).await {
             tracing::info!("an error occurred; error = {:?}", e);
         }
-        // If the TUI task ends, the program should end
-        std::process::exit(0);
+    });
+
+    // Spawn new thread for TUI
+    thread::spawn(move || {
+        tui::tui(console_input_rx)
     });
 
     //Loop accepting new connections from other clients creating a task for each of them handling their messages

@@ -37,7 +37,6 @@ pub struct RoutingTableEntry {
 pub struct Shared {  
     pub peers: HashMap<SocketAddr, Tx>, //maybe refactor to maybe channels or streams?
     pub console_input_sender: Tx,
-    pub console_cmd_receiver: Arc<Mutex<Rx>>,
     //                         target    |  next,hop_count,ttl
     pub routing_table: HashMap<SocketAddr, RoutingTableEntry>,
 }
@@ -45,15 +44,12 @@ pub struct Shared {
 
 impl Shared {
     /// Create a new, empty, instance of `Shared`.
-    pub fn new(console_input_sender: Tx, console_cmd_receiver: Rx) -> Self {
-        // See console_middleware.rs for more information on this
-        let console_cmd_safe = Arc::new(Mutex::new(console_cmd_receiver));
+    pub fn new(console_input_sender: Tx) -> Self {
         
         Shared {
             peers: HashMap::new(),
             routing_table: HashMap::new(),
             console_input_sender,
-            console_cmd_receiver: console_cmd_safe,
         }
     }
 
@@ -111,8 +107,8 @@ impl Shared {
 pub async fn test_get_routing_table(){
     let target = "127.0.0.1:6666".parse::<SocketAddr>().unwrap();
     let local = "127.0.0.1:6142".parse::<SocketAddr>().unwrap();
-    let (fake_tx, fake_rx) = mpsc::unbounded_channel();
-    let mut shared = Shared::new(fake_tx, fake_rx);
+    let (fake_tx, _) = mpsc::unbounded_channel();
+    let mut shared = Shared::new(fake_tx);
     shared.routing_table.insert("127.0.0.1:12345".parse::<SocketAddr>().unwrap(),RoutingTableEntry{next:"127.0.0.1:12346".parse::<SocketAddr>().unwrap(), hop_count:2, ttl:true});
     shared.routing_table.insert("127.0.0.1:6666".parse::<SocketAddr>().unwrap(),RoutingTableEntry{next:"127.0.0.1:1236".parse::<SocketAddr>().unwrap(), hop_count:2, ttl:true});
     shared.routing_table.insert("127.0.0.1:1235".parse::<SocketAddr>().unwrap(),RoutingTableEntry{next:"127.0.0.1:6666".parse::<SocketAddr>().unwrap(), hop_count:2, ttl:true});

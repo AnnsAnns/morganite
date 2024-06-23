@@ -1,13 +1,16 @@
-use std::net::SocketAddr;
+use std::{net::SocketAddr};
 
-use crate::protocol::Packet;
+use std::sync::mpsc::Sender;
 
-#[derive(Debug, Clone)]
+use crate::{protocol::Packet, shared::Tx};
+
+#[derive(Debug, Clone, PartialEq)]
 pub enum Commands {
     Connect(SocketAddr),
     Contacts,
     Message(SocketAddr, String),
     Quit,
+    Help,
     Unknown(String),
 }
 
@@ -20,5 +23,7 @@ pub enum ChannelEvent {
     Routing(u8), //type id
     Forward(Packet), 
     Command(Commands),
+    Contacts(String),
+    CommandReceiver(Sender<ChannelEvent>),
     Unknown
 }
