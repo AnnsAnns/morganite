@@ -14,6 +14,7 @@ pub enum Commands {
     Quit,
     Help,
     Unknown(String),
+    SetOwnNick(String),
 }
 
 
@@ -27,5 +28,6 @@ pub enum ChannelEvent {
     Command(Commands),
     Contacts(HashMap<SocketAddr, RoutingTableEntry>),
     CommandReceiver(Sender<ChannelEvent>),
+    MessageToTUI(String, String, SocketAddr), //message, sender, destination
     Unknown
 }

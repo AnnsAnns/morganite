@@ -37,6 +37,7 @@ pub struct RoutingTableEntry {
 pub struct Shared {  
     pub peers: HashMap<SocketAddr, Tx>, //maybe refactor to maybe channels or streams?
     pub console_input_sender: Tx,
+    pub nickname: String,
     //                         target    |  next,hop_count,ttl
     pub routing_table: HashMap<SocketAddr, RoutingTableEntry>,
 }
@@ -49,6 +50,7 @@ impl Shared {
         Shared {
             peers: HashMap::new(),
             routing_table: HashMap::new(),
+            nickname: "Morganite".to_string(), //default nickname "Morganite
             console_input_sender,
         }
     }

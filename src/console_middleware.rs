@@ -67,6 +67,15 @@ pub async fn handle_console(state: Arc<Mutex<Shared>>) -> Result<(), Box<dyn Err
                     tracing::debug!("Received event: {:?}", event);
 
                     match event {
+                        ChannelEvent::MessageToTUI(message, name, addr) => {
+                            // Send message to TUI
+                            tracing::debug!("Sending message to TUI");
+
+                            // Send the message to the channel
+                            if let Err(e) = state.lock().await.console_input_sender.send(ChannelEvent::MessageToTUI(message, name, addr)) {
+                                tracing::info!("Error sending your message. error = {:?}", e);
+                            }
+                        },
                         ChannelEvent::Command(cmd) => {
                             tracing::debug!("Received command: {:?}", cmd);
 
@@ -88,6 +97,12 @@ pub async fn handle_console(state: Arc<Mutex<Shared>>) -> Result<(), Box<dyn Err
                                         if let Err(e) = state_lock.console_input_sender.send(ChannelEvent::Contacts(routing_table)) {
                                             tracing::error!("Error sending routing table to TUI: {:?}", e);
                                         }
+                                },
+                                Commands::SetOwnNick(nickname) => {
+                                    // Set the nickname
+                                    tracing::debug!("Setting nickname to: {}", nickname);
+                                    let mut state_lock = state.lock().await;
+                                    state_lock.nickname = nickname;
                                 },
                                 Commands::Connect(addr) => {
                                     // Connect to specified client

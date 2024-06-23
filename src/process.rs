@@ -16,11 +16,11 @@ use std::sync::Arc;
 
 use crate::heartbeat::POISE_UNREACHABLE;
 use crate::peer::Peer;
-use crate::protocol::routing_packet::{RoutingEntry, RoutingPacket};
-use crate::protocol::Packet;
-use crate::protocol::{MESSAGE, CR, CRR, SCC, SCCR, STU};
-use crate::protocol::shared_header::SharedHeader;
 use crate::protocol::routed_packet::RoutedPacket;
+use crate::protocol::routing_packet::{RoutingEntry, RoutingPacket};
+use crate::protocol::shared_header::SharedHeader;
+use crate::protocol::Packet;
+use crate::protocol::{CR, CRR, MESSAGE, SCC, SCCR, STU};
 use crate::shared::Shared;
 use crate::{channel_events, swag_coding};
 
@@ -33,29 +33,31 @@ pub async fn process(
 ) -> Result<(), Box<dyn Error>> {
     let local_addr = match stream.local_addr() {
         Ok(local_addr) => local_addr,
-        Err(e) => { 
+        Err(e) => {
             tracing::info!("an error occurred; error = {:?}", e);
             panic!(); //TODO maybe different error handling
-        },
+        }
     };
     let swag_coder = Framed::new(stream, SwagCoder::new());
-    
+
     // Register our peer with state which internally sets up some channels.
     let mut peer = Peer::new(state.clone(), swag_coder).await?;
     // A client has connected, let's let everyone know.
     {
         let mut state = state.lock().await;
         let msg = tracing::info!("{addr} has joined the chat");
-        state.broadcast(addr, &ChannelEvent::Join(addr.to_string())).await;
+        state
+            .broadcast(addr, &ChannelEvent::Join(addr.to_string()))
+            .await;
         if send_cr {
             match state.peers.get(&addr) {
                 Some(entry) => {
                     if let Err(e) = entry.send(ChannelEvent::Routing(CR)) {
                         tracing::info!("Error sending the CR. error = {:?}", e);
                     }
-                },
-                None => { 
-                    tracing::error!("Maybe too early for CR?: {}",addr);
+                }
+                None => {
+                    tracing::error!("Maybe too early for CR?: {}", addr);
                 }
             };
         }
@@ -79,9 +81,14 @@ pub async fn process(
                     ChannelEvent::Message(msg, dest_addr) => {
                         header.dest_ip = dest_addr.ip().to_string();
                         header.dest_port = dest_addr.port().to_string();
+                        // Get the nickname
+                        let nickname = {
+                            let state = state.lock().await;
+                            state.nickname.clone()
+                        };
                         let routed_packet = RoutedPacket {
                             header,
-                            nickname: "TODO".to_string(),
+                            nickname,
                             message: msg,
                         };
                         peer.swag_coder.send(Packet::RoutedPacket(routed_packet)).await?;
@@ -112,8 +119,8 @@ pub async fn process(
                         peer.swag_coder.send(Packet::RoutingPacket(routing_packet,type_id)).await?;
                     }
                     _ => tracing::error!("Received Event: {:#?} is not implemented!", event),
-                } 
-                
+                }
+
 
 
             }
@@ -136,6 +143,11 @@ pub async fn process(
                                 true => {
                                     //message is for us, display message
                                     tracing::info!("{}: {}",routed_packet.nickname, routed_packet.message);
+                                    // Send a broadcast to inform everyone about the message
+                                    {
+                                        let mut state = state.lock().await;
+                                        state.broadcast(addr, &ChannelEvent::MessageToTUI(routed_packet.message.clone(), routed_packet.nickname.clone(), addr)).await;
+                                    }
                                 },
                                 //message is for someone else, try forwarding it:
                                 false => {
@@ -161,7 +173,7 @@ pub async fn process(
                                             //get channel to next on route
                                             let peer = match lock.peers.get(&routing_entry.next) {
                                                 Some(peer) => peer,
-                                                None => { 
+                                                None => {
                                                     tracing::error!("Forwarding: No channel to destination available: {}",routing_entry.next);
                                                     continue;
                                                 }
@@ -239,7 +251,7 @@ pub async fn process(
     {
         let mut state = state.lock().await;
         state.peers.remove(&addr);
-        
+
         // Poise reverse routing table
         for (dest, rt_entry) in state.routing_table.iter_mut() {
             if rt_entry.next == addr {
@@ -249,7 +261,9 @@ pub async fn process(
 
         let msg = format!("{} has left the chat", addr);
         tracing::info!("{}", msg);
-        state.broadcast(addr, &ChannelEvent::Leave(addr.to_string())).await;
+        state
+            .broadcast(addr, &ChannelEvent::Leave(addr.to_string()))
+            .await;
     }
 
     Ok(())

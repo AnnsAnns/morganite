@@ -13,16 +13,16 @@ use crossterm::{
     ExecutableCommand,
 };
 use ratatui::layout::Size;
-use ratatui::widgets::{BorderType, List, ListDirection};
+use ratatui::widgets::{BorderType, List, ListDirection, Wrap};
 use ratatui::{
     layout::{Constraint, Direction, Layout},
     prelude::{CrosstermBackend, Stylize, Terminal},
     widgets::{Block, Borders, Paragraph},
     Frame,
 };
-use tui_nodes::{Connection, NodeGraph, NodeLayout};
 use std::sync::mpsc::Sender;
 use tokio::sync::{mpsc, Mutex};
+use tui_nodes::{Connection, NodeGraph, NodeLayout};
 
 use crate::shared::RoutingTableEntry;
 use crate::{
@@ -33,6 +33,7 @@ use crate::{
 struct TUI {
     input: String,
     log: Vec<String>,
+    chat_room: Vec<String>,
     exit: bool,
     receiver: Rx,
     sender: Sender<ChannelEvent>,
@@ -54,13 +55,22 @@ fn command_to_event(cmd: &str) -> Commands {
         "quit" => Commands::Quit,
         "help" => Commands::Help,
         "contacts" => Commands::Contacts,
+        "setnick" => {
+            if words.len() < 2 {
+                Commands::Unknown("Invalid number of arguments".to_string())
+            } else {
+                let name = words.get(1).unwrap_or(&"Morganite").to_string();
+                Commands::SetOwnNick(name)
+            }
+        }
         "msg" => {
             if words.len() < 4 {
                 Commands::Unknown("Invalid number of arguments".to_string())
             } else {
                 let ip = words.get(1).unwrap_or(&"").to_string();
                 let port = words.get(2).unwrap_or(&"").to_string();
-                let msg = words.get(3).unwrap_or(&"").to_string();
+                // Any message after the first 3 words is the message
+                let msg = words[3..].join(" ");
                 let addr = match string_to_socketaddr(&ip, &port) {
                     Some(socketaddr) => socketaddr,
                     None => return Commands::Unknown("Invalid IP or Port".to_string()),
@@ -97,10 +107,14 @@ pub fn tui(receiver: Rx) -> Result<()> {
         receiver,
         input: String::new(),
         log: Vec::new(),
+        chat_room: Vec::new(),
         sender: fake_tx,
         exit: false,
         contacts: HashMap::new(),
     };
+
+    // Create a timer that fires a tick every 3s
+    let mut current_time = std::time::Instant::now();
 
     // Main Loop
     while !tui.exit {
@@ -108,12 +122,18 @@ pub fn tui(receiver: Rx) -> Result<()> {
             draw_ui(frame, &tui);
         })?;
 
+        // Send a contacts request every 3 seconds to keep the routing table updated
+        if current_time.elapsed() > Duration::from_secs(3) {
+            current_time = std::time::Instant::now();
+            let _ = tui.sender.send(ChannelEvent::Command(Commands::Contacts));
+        }
+
         // Check for received messages
         if let Ok(event) = tui.receiver.try_recv() {
             match event {
                 ChannelEvent::Message(msg, addr) => {
-                    tui.log
-                        .push(format!("Received message from {}: {}", addr, msg));
+                    tui.chat_room
+                        .push(format!("{}: {}", addr, msg));
                 }
                 ChannelEvent::Command(cmd) => {
                     tui.log.push(format!("Received command: {:?}", cmd));
@@ -127,10 +147,13 @@ pub fn tui(receiver: Rx) -> Result<()> {
                     tui.contacts = contacts;
                 }
                 ChannelEvent::Join(addr) => {
-                    tui.log.push(format!("New User joined @ {}", addr));
+                    tui.chat_room.push(format!("New User joined @ {}", addr));
                 }
                 ChannelEvent::Leave(addr) => {
-                    tui.log.push(format!("User left @ {}", addr));
+                    tui.chat_room.push(format!("User left @ {}", addr));
+                }
+                ChannelEvent::MessageToTUI(msg, name, addr) => {
+                    tui.chat_room.push(format!("{}@{}: {}", name, addr, msg));
                 }
                 _ => tui.log.push(format!("Received unknown event: {:?}", event)),
             }
@@ -151,8 +174,17 @@ pub fn tui(receiver: Rx) -> Result<()> {
                             let cmd = command_to_event(tui.input.as_str());
 
                             // Prepare to exit if the command is quit
-                            if cmd == Commands::Quit {
-                                tui.exit = true;
+                            match cmd {
+                                Commands::Quit => {
+                                    tui.exit = true;
+                                }
+                                Commands::SetOwnNick(ref name) => {
+                                    tui.chat_room.push(format!("Set own nick to: {}", name));
+                                }
+                                Commands::Message(ref addr, ref message) => {
+                                    tui.chat_room.push(format!("You => {}: {}", addr, message));
+                                }
+                                _ => {}
                             }
 
                             match cmd {
@@ -164,13 +196,18 @@ pub fn tui(receiver: Rx) -> Result<()> {
                                     contacts\n\
                                     msg <IP> <port> <message>\n\
                                     connect <IP> <port>\
+                                    setnick <name>
                                     "
                                         .to_string(),
                                     );
                                 }
                                 _ => {
-                                    let response = tui.sender.send(ChannelEvent::Command(cmd.clone()));
-                                    tui.log.push(format!("Sending command: {:?} => {:#?}", cmd, response));
+                                    let response =
+                                        tui.sender.send(ChannelEvent::Command(cmd.clone()));
+                                    tui.log.push(format!(
+                                        "Sending command: {:?} => {:#?}",
+                                        cmd, response
+                                    ));
                                 }
                             }
 
@@ -194,37 +231,6 @@ pub fn tui(receiver: Rx) -> Result<()> {
     Ok(())
 }
 
-fn draw_nodes(layout_size: Size, tui: &TUI) -> NodeGraph {
-    let mut nodes = Vec::new();
-    let mut connections = Vec::new();
-
-    let routing_table_size = tui.contacts.len();
-
-    nodes.push(NodeLayout::new((layout_size.width, layout_size.height))
-        .with_title("This Node"));
-
-    for (addr, entry) in tui.contacts.iter() {
-        let node = NodeLayout::new((layout_size.width/routing_table_size as u16, layout_size.height / routing_table_size as u16)).with_border_type(BorderType::Thick);
-        nodes.push(node);
-    }
-
-    for (addr, entry) in tui.contacts.iter() {
-        // Get the index of the current address with tui.contacts
-        let index = tui.contacts.iter().position(|(a, _)| a == addr).unwrap();
-        // Get the index of the entry.next address with tui.contacts
-        let next_index = match tui.contacts.iter().position(|(a, _)| a == &entry.next) {
-            Some(idx) => idx,
-            None => 0,
-        };
-        let connection = Connection::new(index, 0, next_index, 0);
-        connections.push(connection);
-    }
-
-    let mut graph = NodeGraph::new(nodes, connections, layout_size.width as usize, layout_size.height as usize);
-    graph.calculate();
-    graph
-}
-
 fn draw_ui(frame: &mut Frame, tui: &TUI) -> Result<()> {
     let root_layout = Layout::default()
         .direction(Direction::Vertical)
@@ -233,29 +239,55 @@ fn draw_ui(frame: &mut Frame, tui: &TUI) -> Result<()> {
 
     let top_inner_layout = Layout::default()
         .direction(Direction::Horizontal)
-        .constraints(vec![Constraint::Percentage(75), Constraint::Percentage(25)])
+        .constraints(vec![Constraint::Percentage(33), Constraint::Percentage(33), Constraint::Percentage(33)])
         .split(root_layout[1]);
 
+    // Top Input Field
     let input = format!("Input: {}", tui.input);
     frame.render_widget(
         Paragraph::new(input).block(Block::new().borders(Borders::ALL)),
         root_layout[0],
     );
 
-    let graph = draw_nodes(top_inner_layout[1].as_size(), tui);
-    let zones = graph.split(top_inner_layout[1]);
-	for (idx, ea_zone) in zones.into_iter().enumerate() {
-		frame.render_widget(Paragraph::new(format!("{idx}")), ea_zone);
-	}
-    frame.render_stateful_widget(draw_nodes(top_inner_layout[1].as_size(), tui), top_inner_layout[1], &mut ());
-
+    // Display the log
     // Only showcase the last 10 logs
     let mut log = tui.log.clone();
     log.reverse();
+    log.push("Logs:".to_string());
 
     frame.render_widget(
-        List::new(log).block(Block::new().borders(Borders::ALL)).direction(ListDirection::BottomToTop),
+        List::new(log)
+            .block(Block::new().borders(Borders::ALL))
+            .direction(ListDirection::BottomToTop),
         top_inner_layout[0],
     );
+
+    // Display the messages / join / leave
+    // Display the log
+    // Only showcase the last 10 logs
+    let mut chat: Vec<String> = tui.chat_room.clone();
+    chat.reverse();
+    chat.push("Chat:".to_string());
+
+    frame.render_widget(
+        List::new(chat)
+            .block(Block::new().borders(Borders::ALL))
+            .direction(ListDirection::BottomToTop),
+        top_inner_layout[1],
+    );
+
+    // Display Routing Entries
+    let mut rounting_entries =
+    "Node Addr: | Hops | Via Addr:\n =============================\n".to_string();
+for (addr, entry) in tui.contacts.iter() {
+    let entry = format!("{:?} | {:?} | {:?} \n", addr, entry.hop_count, entry.next);
+    rounting_entries.push_str(&entry);
+}
+
+    frame.render_widget(
+        Paragraph::new(rounting_entries).block(Block::new().borders(Borders::ALL)).wrap(Wrap {trim: true}),
+        top_inner_layout[2],
+    );
+
     Ok(())
 }
