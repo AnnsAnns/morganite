@@ -79,7 +79,7 @@ impl Shared {
         routing_entries
     }
     /// updates the routing table with the given information
-    pub async fn update_routing_table(&mut self, update: Vec<RoutingEntry>) {
+    pub async fn update_routing_table(&mut self, update: Vec<RoutingEntry>, sender: SocketAddr) {
         for new_entry in update.iter() {
             // get target
             let target = (new_entry.target_ip.clone()+":"+&new_entry.target_port.to_string()).parse::<SocketAddr>().unwrap();
@@ -90,7 +90,7 @@ impl Shared {
                     // compare hop_count to target in Routing Table and in update
                     let hop_count = new_entry.hop_count;
                     if hop_count <= old_entry.hop_count {
-                        let next =(new_entry.next_ip.clone()+":"+&new_entry.next_port.to_string()).parse::<SocketAddr>().unwrap();
+                        let next =(sender.ip().to_string()+":"+&sender.port().to_string()).parse::<SocketAddr>().unwrap();
                         // if update is shorter: replace/change entry in Routing Table
                         self.routing_table.insert(target, RoutingTableEntry{next,hop_count,ttl: true});
                     }
@@ -121,7 +121,7 @@ pub async fn test_get_routing_table(){
     let update = vec![RoutingEntry{target_ip: "127.0.0.1".to_string(),target_port:11111,next_ip:"127.0.0.1".to_string(),next_port:12345,hop_count:3},
         RoutingEntry{target_ip: "127.0.0.1".to_string(),target_port:11112,next_ip:"127.0.0.1".to_string(),next_port:12345,hop_count:4},
         RoutingEntry{target_ip: "127.0.0.1".to_string(),target_port:11113,next_ip:"127.0.0.1".to_string(),next_port:12345,hop_count:5}];
-    shared.update_routing_table(update).await;
+    shared.update_routing_table(update, target).await;
     //vergleichsmap
     let mut rt: HashMap<SocketAddr, RoutingTableEntry> = HashMap::new();
     rt.insert("127.0.0.1:12345".parse::<SocketAddr>().unwrap(),RoutingTableEntry{next:"127.0.0.1:12346".parse::<SocketAddr>().unwrap(), hop_count:2, ttl:true});

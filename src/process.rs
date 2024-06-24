@@ -205,7 +205,7 @@ pub async fn process(
                                     let reply_table;
                                     {
                                         let mut lock = state.lock().await;
-                                        lock.update_routing_table(routing_packet.table.clone()).await;
+                                        lock.update_routing_table(routing_packet.table.clone(),addr).await;
                                         reply_table = lock.get_routing_table(addr, local_addr).await;
                                     }
                                     let reply_routing_packet: RoutingPacket = RoutingPacket{header: reply_header, table: reply_table};
@@ -217,12 +217,12 @@ pub async fn process(
                                 CRR => {
                                     //update routing table based on received information:
                                     let mut lock = state.lock().await;
-                                    lock.update_routing_table(routing_packet.table.clone()).await;
+                                    lock.update_routing_table(routing_packet.table.clone(), addr).await;
                                 },
                                 SCCR => {
                                     //update routing table based on received information and mark the sender as responding:
                                     let mut lock = state.lock().await;
-                                    lock.update_routing_table(routing_packet.table.clone()).await;
+                                    lock.update_routing_table(routing_packet.table.clone(), addr).await;
                                     lock.routing_table.entry(addr).and_modify(|rt_entry| rt_entry.ttl = true);
                                 },
                                 //undefined type_id:
