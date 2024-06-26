@@ -47,7 +47,6 @@ impl Peer {
         {
             let mut lock = state.lock().await;
             lock.peers.insert(addr, tx);
-            lock.routing_table.insert(addr, RoutingTableEntry {next:addr, hop_count: 1, ttl: true});
         }
        
         tracing::info!("added address: {}",addr);

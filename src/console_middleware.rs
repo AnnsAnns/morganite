@@ -105,33 +105,53 @@ pub async fn handle_console(state: Arc<Mutex<Shared>>) -> Result<(), Box<dyn Err
                                     state_lock.nickname = nickname;
                                 },
                                 Commands::Connect(addr) => {
-                                    // Connect to specified client
-                                    tracing::debug!("Connecting to: {}", addr);
-
-                                    // Create TCP stream
-                                    let stream = match TcpStream::connect(addr).await {
-                                        Ok(stream) => stream,
-                                        Err(e) => {
-                                            tracing::error!("Failed to connect to {}: {}", addr, e);
-                                            continue;
-                                        }
-                                    };
-
-                                    // Clone a handle to the `Shared` state for the new connection.
-                                    let proccess_state = Arc::clone(&state);
-
-                                    //add new connection to routing table
+                                    //check wether there is already a direct connection to the target client:
+                                    let mut already_connected: bool;
                                     {
-                                    let mut lock = state.lock().await;
-                                    lock.routing_table.insert(addr, RoutingTableEntry {next:addr, hop_count: 1, ttl: true});
+                                        let lock = state.lock().await;
+                                        match lock.routing_table.get(&addr) {
+                                            Some(direct) => {
+                                                if direct.hop_count == 1 {
+                                                    already_connected = true; 
+                                                }
+                                                else {
+                                                    already_connected = false;
+                                                }
+                                            },
+                                            None => {
+                                                already_connected = false;
+                                            },
+                                        };
                                     }
-                                    // Spawn asynchronous handler
-                                    tokio::spawn(async move {
-                                        tracing::info!("Connected to: {}", addr);
-                                        if let Err(e) = process(proccess_state, stream, addr, true).await {
-                                            tracing::info!("An error occurred; error = {:?}", e);
+                                    if !already_connected {
+                                        // Connect to specified client
+                                        tracing::debug!("Connecting to: {}", addr);
+
+                                        // Create TCP stream
+                                        let stream = match TcpStream::connect(addr).await {
+                                            Ok(stream) => stream,
+                                            Err(e) => {
+                                                tracing::error!("Failed to connect to {}: {}", addr, e);
+                                                continue;
+                                            }
+                                        };
+
+                                        // Clone a handle to the `Shared` state for the new connection.
+                                        let proccess_state = Arc::clone(&state);
+
+                                        //add new connection to routing table
+                                        {
+                                        let mut lock = state.lock().await;
+                                        lock.routing_table.insert(addr, RoutingTableEntry {next:addr, hop_count: 1, ttl: true});
                                         }
-                                    });
+                                        // Spawn asynchronous handler
+                                        tokio::spawn(async move {
+                                            tracing::info!("Connected to: {}", addr);
+                                            if let Err(e) = process(proccess_state, stream, addr, true).await {
+                                                tracing::info!("An error occurred; error = {:?}", e);
+                                            }
+                                        });
+                                    }
                                 },
                                 Commands::Message(addr, message) => {
                                     // Send message to specified client
