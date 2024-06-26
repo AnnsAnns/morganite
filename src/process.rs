@@ -231,7 +231,8 @@ pub async fn process(
                                     //update routing table based on received information and mark the sender as responding:
                                     let mut lock = state.lock().await;
                                     lock.update_routing_table(routing_packet.table.clone(), addr).await;
-                                    lock.routing_table.entry(addr).and_modify(|rt_entry| rt_entry.ttl = true);
+                                    let target_address: SocketAddr = (routing_packet.header.source_ip.clone() + ":" + &routing_packet.header.source_port.clone()).parse::<SocketAddr>().unwrap();
+                                    lock.routing_table.entry(target_address).and_modify(|rt_entry| rt_entry.ttl = true);
                                 },
                                 //undefined type_id:
                                 MESSAGE => tracing::error!("Routing packet with type_id of Message detected!"),
