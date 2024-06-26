@@ -151,7 +151,7 @@ pub fn tui(receiver: Rx) -> Result<()> {
                     tui.sender = tx;
                 }
                 ChannelEvent::Contacts(contacts) => {
-                    tui.log.push(format!("Received contacts: {:?}", contacts));
+                    //tui.log.push(format!("Received contacts: {:?}", contacts));
                     tui.contacts = contacts;
                 }
                 ChannelEvent::Join(addr) => {
@@ -162,6 +162,9 @@ pub fn tui(receiver: Rx) -> Result<()> {
                 }
                 ChannelEvent::MessageToTUI(msg, name, addr) => {
                     tui.chat_room.push(format!("{}@{}: {}", name, addr, msg));
+                }
+                ChannelEvent::Routing(_) => {
+                    // Do nothing, spammy
                 }
                 _ => tui.log.push(format!("Received unknown event: {:?}", event)),
             }
