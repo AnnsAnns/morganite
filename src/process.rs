@@ -14,6 +14,7 @@ use std::io;
 use std::net::SocketAddr;
 use std::sync::Arc;
 
+use crate::channel_events::Commands;
 use crate::heartbeat::POISE_UNREACHABLE;
 use crate::peer::Peer;
 use crate::protocol::routed_packet::RoutedPacket;
@@ -131,9 +132,8 @@ pub async fn process(
                 Some(Ok(packet)) => {
                     {
                         let mut state = state.lock().await;
-                        tracing::info!("New Message from {}: {:#?}", addr, packet);
-                        //handle message from others
-                        state.broadcast(addr, &ChannelEvent::Unknown).await;
+                        tracing::info!("New Packet from {}: {:#?}", addr, packet);
+                        state.console_input_sender.send(ChannelEvent::LogToTerminal(format!("New Packet from {}: {:?}", addr, packet))).unwrap();
                     }
 
                     //assess what kind of packet we received:

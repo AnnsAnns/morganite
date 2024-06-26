@@ -107,12 +107,14 @@ pub async fn handle_console(state: Arc<Mutex<Shared>>) -> Result<(), Box<dyn Err
                                 Commands::Connect(addr) => {
                                     // Connect to specified client
                                     tracing::debug!("Connecting to: {}", addr);
+                                    state.lock().await.console_input_sender.send(ChannelEvent::LogToTerminal(format!("Connecting to: {}", addr))).unwrap();
 
                                     // Create TCP stream
                                     let stream = match TcpStream::connect(addr).await {
                                         Ok(stream) => stream,
                                         Err(e) => {
                                             tracing::error!("Failed to connect to {}: {}", addr, e);
+                                            state.lock().await.console_input_sender.send(ChannelEvent::LogToTerminal(format!("Failed to connect to {}: {}", addr, e))).unwrap();
                                             continue;
                                         }
                                     };

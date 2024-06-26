@@ -13,6 +13,7 @@ use crossterm::{
     ExecutableCommand,
 };
 use ratatui::layout::{Margin, Size};
+use ratatui::text::Text;
 use ratatui::widgets::{BorderType, List, ListDirection, Scrollbar, ScrollbarOrientation, ScrollbarState, Wrap};
 use ratatui::{
     layout::{Constraint, Direction, Layout},
@@ -163,6 +164,9 @@ pub fn tui(receiver: Rx) -> Result<()> {
                 ChannelEvent::MessageToTUI(msg, name, addr) => {
                     tui.chat_room.push(format!("{}@{}: {}", name, addr, msg));
                 }
+                ChannelEvent::LogToTerminal(msg) => {
+                    tui.log.push(msg);
+                }
                 ChannelEvent::Routing(_) => {
                     // Do nothing, spammy
                 }
@@ -201,6 +205,8 @@ pub fn tui(receiver: Rx) -> Result<()> {
                             let cmd = command_to_event(tui.input.as_str());
                             tui.input_history.push(tui.input.clone()); // Save the input to history
                             tui.input_history_index = tui.input_history.len(); // Reset the history index
+
+                            
 
                             // Prepare to exit if the command is quit
                             match cmd {
@@ -281,9 +287,9 @@ fn draw_ui(frame: &mut Frame, tui: &TUI) -> Result<()> {
         .split(root_layout[1]);
 
     // Top Input Field
-    let input = format!("Input: {}", tui.input);
+    let input = tui.input.clone();
     frame.render_widget(
-        Paragraph::new(input).block(Block::new().borders(Borders::ALL)),
+        Paragraph::new(input).block(Block::new().borders(Borders::ALL).title("Input")),
         root_layout[0],
     );
 
@@ -291,11 +297,10 @@ fn draw_ui(frame: &mut Frame, tui: &TUI) -> Result<()> {
     // Only showcase the last 10 logs
     let mut log = tui.log.split_at(tui.log.len() - tui.log_index).0.to_vec();
     log.reverse();
-    log.push("Logs:".to_string());
 
     frame.render_widget(
         List::new(log)
-            .block(Block::new().borders(Borders::ALL))
+            .block(Block::new().borders(Borders::ALL).title("Logs"))
             .direction(ListDirection::BottomToTop),
         top_inner_layout[0],
     );
@@ -321,11 +326,10 @@ fn draw_ui(frame: &mut Frame, tui: &TUI) -> Result<()> {
     // Only showcase the last 10 logs
     let mut chat: Vec<String> = tui.chat_room.clone();
     chat.reverse();
-    chat.push("Chat:".to_string());
 
     frame.render_widget(
         List::new(chat)
-            .block(Block::new().borders(Borders::ALL))
+            .block(Block::new().borders(Borders::ALL).title("Chat"))
             .direction(ListDirection::BottomToTop),
         top_inner_layout[1],
     );
@@ -339,7 +343,7 @@ for (addr, entry) in tui.contacts.iter() {
 }
 
     frame.render_widget(
-        Paragraph::new(rounting_entries).block(Block::new().borders(Borders::ALL)).wrap(Wrap {trim: true}),
+        Paragraph::new(rounting_entries).block(Block::new().borders(Borders::ALL).title("Routing Table")).wrap(Wrap {trim: true}),
         top_inner_layout[2],
     );
 
