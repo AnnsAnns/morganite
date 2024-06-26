@@ -12,8 +12,8 @@ use crossterm::{
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
     ExecutableCommand,
 };
-use ratatui::layout::Size;
-use ratatui::widgets::{BorderType, List, ListDirection, Wrap};
+use ratatui::layout::{Margin, Size};
+use ratatui::widgets::{BorderType, List, ListDirection, Scrollbar, ScrollbarOrientation, ScrollbarState, Wrap};
 use ratatui::{
     layout::{Constraint, Direction, Layout},
     prelude::{CrosstermBackend, Stylize, Terminal},
@@ -32,6 +32,9 @@ use crate::{
 
 struct TUI {
     input: String,
+    input_history: Vec<String>,
+    input_history_index: usize,
+    log_index: usize,
     log: Vec<String>,
     chat_room: Vec<String>,
     exit: bool,
@@ -106,6 +109,9 @@ pub fn tui(receiver: Rx) -> Result<()> {
     let mut tui = TUI {
         receiver,
         input: String::new(),
+        input_history: Vec::new(),
+        input_history_index: 0,
+        log_index: 0,
         log: Vec::new(),
         chat_room: Vec::new(),
         sender: fake_tx,
@@ -115,6 +121,8 @@ pub fn tui(receiver: Rx) -> Result<()> {
 
     // Create a timer that fires a tick every 3s
     let mut current_time = std::time::Instant::now();
+
+    help_cmd(&mut tui);
 
     // Main Loop
     while !tui.exit {
@@ -169,9 +177,27 @@ pub fn tui(receiver: Rx) -> Result<()> {
                         KeyCode::Char(c) => {
                             tui.input.push(c);
                         }
+                        KeyCode::Up => {
+                            tui.input_history_index = tui.input_history_index.saturating_sub(1);
+                            tui.input = tui.input_history.get(tui.input_history_index).unwrap_or(&"".to_string()).to_string();
+                        }
+                        KeyCode::Down => {
+                            tui.input_history_index = tui.input_history_index.saturating_add(1);
+                            tui.input = tui.input_history.get(tui.input_history_index).unwrap_or(&"".to_string()).to_string();
+                        }
+                        KeyCode::Left => {
+                            if tui.log_index < tui.log.len() {
+                                tui.log_index = tui.log_index.saturating_add(1);
+                            }
+                        }
+                        KeyCode::Right => {
+                            tui.log_index = tui.log_index.saturating_sub(1);
+                        }
                         KeyCode::Enter => {
                             // Process input
                             let cmd = command_to_event(tui.input.as_str());
+                            tui.input_history.push(tui.input.clone()); // Save the input to history
+                            tui.input_history_index = tui.input_history.len(); // Reset the history index
 
                             // Prepare to exit if the command is quit
                             match cmd {
@@ -189,17 +215,7 @@ pub fn tui(receiver: Rx) -> Result<()> {
 
                             match cmd {
                                 Commands::Help => {
-                                    tui.log.push(
-                                        "Available commands: \n\
-                                    quit\n\
-                                    help\n\
-                                    contacts\n\
-                                    msg <IP> <port> <message>\n\
-                                    connect <IP> <port>\
-                                    setnick <name>
-                                    "
-                                        .to_string(),
-                                    );
+                                    help_cmd(&mut tui);
                                 }
                                 _ => {
                                     let response =
@@ -231,6 +247,25 @@ pub fn tui(receiver: Rx) -> Result<()> {
     Ok(())
 }
 
+fn help_cmd(tui: &mut TUI) {
+    tui.log.push(
+        "Available commands: \n\
+        =====================\n\
+        quit => Quit client\n\
+        help => Get this message again\n\
+        contacts => Retrieve routing table (Also in the right block)\n\
+        msg <IP> <port> <message> => Send a message to somebody\n\
+        connect <IP> <port> => Connect to a new peer\n\
+        setnick <name> => Set your own nickname\n\
+        ↑ => Previous command\n\
+        ↓ => Next command\n\
+        ← => Go back in log\n\
+        → => Go forward in log\
+    "
+        .to_string(),
+    );
+}
+
 fn draw_ui(frame: &mut Frame, tui: &TUI) -> Result<()> {
     let root_layout = Layout::default()
         .direction(Direction::Vertical)
@@ -251,7 +286,7 @@ fn draw_ui(frame: &mut Frame, tui: &TUI) -> Result<()> {
 
     // Display the log
     // Only showcase the last 10 logs
-    let mut log = tui.log.clone();
+    let mut log = tui.log.split_at(tui.log.len() - tui.log_index).0.to_vec();
     log.reverse();
     log.push("Logs:".to_string());
 
@@ -260,6 +295,22 @@ fn draw_ui(frame: &mut Frame, tui: &TUI) -> Result<()> {
             .block(Block::new().borders(Borders::ALL))
             .direction(ListDirection::BottomToTop),
         top_inner_layout[0],
+    );
+
+    let scrollbar = Scrollbar::new(ScrollbarOrientation::VerticalRight)
+    .begin_symbol(Some("↑"))
+    .end_symbol(Some("↓"));
+
+    let mut scrollbar_state = ScrollbarState::new(tui.log.len()).position(tui.log.len() - tui.log_index);
+
+    frame.render_stateful_widget(
+        scrollbar,
+        top_inner_layout[0].inner(&Margin {
+            // using an inner vertical margin of 1 unit makes the scrollbar inside the block
+            vertical: 1,
+            horizontal: 0,
+        }),
+        &mut scrollbar_state,
     );
 
     // Display the messages / join / leave
