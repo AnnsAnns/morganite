@@ -66,7 +66,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
     //
     // Note that this is the Tokio TcpListener, which is fully async.
     let listener = TcpListener::bind(&addr).await?;
-
+    //add listener addr to shared space
+    state.lock().await.listener_addr = addr.clone();
     tracing::info!("server running on {}", addr);
 
     // Spawn heartbeat task

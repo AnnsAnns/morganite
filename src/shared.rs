@@ -38,6 +38,7 @@ pub struct Shared {
     pub peers: HashMap<SocketAddr, Tx>, //maybe refactor to maybe channels or streams?
     pub console_input_sender: Tx,
     pub nickname: String,
+    pub listener_addr: String,
     //                         target    |  next,hop_count,ttl
     pub routing_table: HashMap<SocketAddr, RoutingTableEntry>,
 }
@@ -51,6 +52,7 @@ impl Shared {
             peers: HashMap::new(),
             routing_table: HashMap::new(),
             nickname: "Morganite".to_string(), //default nickname "Morganite
+            listener_addr: "127.0.0.1:6142".to_string(),
             console_input_sender,
         }
     }
@@ -73,7 +75,7 @@ impl Shared {
                 target_port: entry.0.port(),
                 next_ip: local.ip().to_string(), //our address since we only add connections through us to the update
                 next_port: local.port(), //replace with const we set in main?
-                hop_count: entry.1.hop_count+1,
+                hop_count: if entry.1.hop_count == 32 {entry.1.hop_count} else {entry.1.hop_count+1},
             });
         }
         routing_entries

@@ -40,7 +40,6 @@ impl Peer {
     ) -> io::Result<Peer> {
         // Get the client socket address
         let addr = swag_coder.get_ref().peer_addr()?;
-        let next_addr = "127.0.0.1:6142".parse::<SocketAddr>().unwrap();
         // Create a channel for this peer
         let (tx, rx) = mpsc::unbounded_channel();
 

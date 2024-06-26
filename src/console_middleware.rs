@@ -14,12 +14,12 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 
 use crate::protocol::CR;
-use crate::shared::Shared;
+use crate::shared::{RoutingTableEntry, Shared};
 
 ///TUI handling the users console inputs
 pub async fn handle_console(state: Arc<Mutex<Shared>>) -> Result<(), Box<dyn Error>> {
     let addr = "127.0.0.1:4444".parse::<SocketAddr>()?;
-    let client_addr = "127.0.0.1:6142".parse::<SocketAddr>()?;
+    let client_addr = state.lock().await.listener_addr.clone().parse::<SocketAddr>().unwrap();
 
     // Create a channel for this peer
     let (tx, mut rx) = mpsc::unbounded_channel();
@@ -120,6 +120,11 @@ pub async fn handle_console(state: Arc<Mutex<Shared>>) -> Result<(), Box<dyn Err
                                     // Clone a handle to the `Shared` state for the new connection.
                                     let proccess_state = Arc::clone(&state);
 
+                                    //add new connection to routing table
+                                    {
+                                    let mut lock = state.lock().await;
+                                    lock.routing_table.insert(addr, RoutingTableEntry {next:addr, hop_count: 1, ttl: true});
+                                    }
                                     // Spawn asynchronous handler
                                     tokio::spawn(async move {
                                         tracing::info!("Connected to: {}", addr);

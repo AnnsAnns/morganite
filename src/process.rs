@@ -21,7 +21,7 @@ use crate::protocol::routing_packet::{RoutingEntry, RoutingPacket};
 use crate::protocol::shared_header::SharedHeader;
 use crate::protocol::Packet;
 use crate::protocol::{CR, CRR, MESSAGE, SCC, SCCR, STU};
-use crate::shared::Shared;
+use crate::shared::{RoutingTableEntry, Shared};
 use crate::{channel_events, swag_coding};
 
 /// Process an individual chat client
@@ -38,6 +38,7 @@ pub async fn process(
             panic!(); //TODO maybe different error handling
         }
     };
+    let listener_address = state.lock().await.listener_addr.clone().parse::<SocketAddr>().unwrap();
     let swag_coder = Framed::new(stream, SwagCoder::new());
 
     // Register our peer with state which internally sets up some channels.
@@ -71,8 +72,9 @@ pub async fn process(
                 tracing::info!("Received Event: {:#?}", event);
                 // create packet
                 let mut header = SharedHeader {
-                    source_ip: local_addr.ip().to_string(),
-                    source_port: local_addr.port().to_string(),
+                    //source addr is listener!
+                    source_ip: listener_address.ip().to_string(),
+                    source_port: listener_address.port().to_string(),
                     dest_ip: addr.ip().to_string(),
                     dest_port: addr.port().to_string(),
                     ttl: 16,
@@ -192,15 +194,21 @@ pub async fn process(
                             tracing::info!("received a routing packet.");
                             //we received a routing packet, check which one and handle it:
                             let reply_header = SharedHeader {
-                                source_ip: local_addr.ip().to_string(),
-                                source_port: local_addr.port().to_string(),
+                                source_ip: listener_address.ip().to_string(),
+                                source_port: listener_address.port().to_string(),
                                 dest_ip: addr.ip().to_string(),
                                 dest_port: addr.port().to_string(),
                                 ttl: 16,
                             };
                             match *type_id {
                                 //routing packet type_ids:
-                                CR | SCC | STU => { //what is the task of STU?
+                                CR | SCC | STU => { 
+                                    if *type_id == CR {
+                                        //Add connection to routing table with source ip + port as target and stream address as next
+                                        let target_address: SocketAddr = (routing_packet.header.source_ip.clone() + ":" + &routing_packet.header.source_port.clone()).parse::<SocketAddr>().unwrap();
+                                        let mut lock = state.lock().await;
+                                        lock.routing_table.insert(target_address, RoutingTableEntry {next:addr, hop_count: 1, ttl: true});
+                                    }
                                     //need to send a reply containing the routing table:
                                     let reply_table;
                                     {
