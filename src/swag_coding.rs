@@ -1,3 +1,5 @@
+use std::cmp::Ordering;
+
 use tokio_util::{
     bytes::BytesMut,
     codec::{Decoder, Encoder},
@@ -71,7 +73,7 @@ impl Decoder for SwagCoder {
 
             self.last_common_header = Some(header);
             self.has_common_header = true;
-            return self.decode(src);
+            self.decode(src)
         } else {
             let header = self.last_common_header.unwrap();
 
@@ -131,7 +133,7 @@ impl Decoder for SwagCoder {
             };
 
             self.has_common_header = false;
-            return Ok(Some(packet));
+            Ok(Some(packet))
         }
     }
 }
@@ -147,7 +149,7 @@ impl Encoder<Packet> for SwagCoder {
                     serde_json::to_string(&packet).unwrap()
                 );
 
-                let packet_bytes = match serde_json::to_vec(&packet) {
+                match serde_json::to_vec(&packet) {
                     Ok(bytes) => bytes,
                     Err(e) => {
                         return Err(std::io::Error::new(
@@ -155,23 +157,17 @@ impl Encoder<Packet> for SwagCoder {
                             format!("Error serializing routing packet: {}", e),
                         ));
                     }
-                };
-
-                packet_bytes
+                }
             }
-            Packet::RoutedPacket(packet) => {
-                let packet_bytes = match serde_json::to_vec(&packet) {
-                    Ok(bytes) => bytes,
-                    Err(e) => {
-                        return Err(std::io::Error::new(
-                            std::io::ErrorKind::Other,
-                            format!("Error serializing routed packet: {}", e),
-                        ));
-                    }
-                };
-
-                packet_bytes
-            }
+            Packet::RoutedPacket(packet) => match serde_json::to_vec(&packet) {
+                Ok(bytes) => bytes,
+                Err(e) => {
+                    return Err(std::io::Error::new(
+                        std::io::ErrorKind::Other,
+                        format!("Error serializing routed packet: {}", e),
+                    ));
+                }
+            },
         };
 
         // Calculate the checksum
@@ -189,34 +185,40 @@ impl Encoder<Packet> for SwagCoder {
         let header_string = serde_json::to_string(&header_stringify).unwrap();
         let header_bytes = header_string.as_bytes();
 
-        if header_bytes.len() > COMMON_HEADER_LENGTH {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                format!(
-                    "Common header too large: {} - Should be {}",
-                    header_bytes.len(),
-                    COMMON_HEADER_LENGTH
-                ),
-            ));
-        } else if header_bytes.len() < COMMON_HEADER_LENGTH {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                format!(
-                    "Common header too small: {} - Should be {}",
-                    header_bytes.len(),
-                    COMMON_HEADER_LENGTH
-                ),
-            ));
+        match header_bytes.len().cmp(&COMMON_HEADER_LENGTH) {
+            Ordering::Less => {
+                let mut new_header_bytes = [0; COMMON_HEADER_LENGTH];
+                new_header_bytes[..header_bytes.len()].copy_from_slice(header_bytes);
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::Other,
+                    format!(
+                        "Common header too small: {} - Should be {}",
+                        header_bytes.len(),
+                        COMMON_HEADER_LENGTH
+                    ),
+                ));
+            }
+            Ordering::Greater => {
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::Other,
+                    format!(
+                        "Common header too large: {} - Should be {}",
+                        header_bytes.len(),
+                        COMMON_HEADER_LENGTH
+                    ),
+                ));
+            }
+            Ordering::Equal => {
+                // Reserve space for the common header & packet
+                dst.reserve(COMMON_HEADER_LENGTH + payload_bytes.len());
+
+                // Write the common header
+                dst.extend_from_slice(header_bytes);
+
+                // Write the packet
+                dst.extend_from_slice(&payload_bytes);
+            }
         }
-
-        // Reserve space for the common header & packet
-        dst.reserve(COMMON_HEADER_LENGTH + payload_bytes.len());
-
-        // Write the common header
-        dst.extend_from_slice(&header_bytes);
-
-        // Write the packet
-        dst.extend_from_slice(&payload_bytes);
 
         Ok(())
     }

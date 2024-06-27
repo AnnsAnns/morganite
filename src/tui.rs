@@ -27,6 +27,7 @@ use crate::{
     shared::Rx,
 };
 
+#[allow(clippy::upper_case_acronyms)]
 struct TUI {
     input: String,
     input_history: Vec<String>,
@@ -49,9 +50,9 @@ fn string_to_socketaddr(ip: &str, port: &str) -> Option<SocketAddr> {
 }
 
 fn command_to_event(cmd: &str) -> Commands {
-    let words = cmd.split(" ").collect::<Vec<&str>>();
+    let words = cmd.split(' ').collect::<Vec<&str>>();
 
-    match words.get(0).unwrap_or(&"").to_owned() {
+    match words.first().unwrap_or(&"").to_owned() {
         "quit" => Commands::Quit,
         "help" => Commands::Help,
         "contacts" => Commands::Contacts,

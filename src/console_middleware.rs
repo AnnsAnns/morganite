@@ -119,12 +119,7 @@ pub async fn handle_console(state: Arc<Mutex<Shared>>) -> Result<(), Box<dyn Err
                                         let lock = state.lock().await;
                                         match lock.routing_table.get(&addr) {
                                             Some(direct) => {
-                                                if direct.hop_count == 1 {
-                                                    already_connected = true;
-                                                }
-                                                else {
-                                                    already_connected = false;
-                                                }
+                                                already_connected = direct.hop_count == 1;
                                             },
                                             None => {
                                                 already_connected = false;

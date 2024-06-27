@@ -26,7 +26,7 @@ pub async fn heartbeat(state: Arc<Mutex<Shared>>) -> Result<(), SendError<Channe
         // Check for ttl flag
         {
             let mut lock = state.lock().await;
-            for (_addr, entry) in &mut lock.routing_table {
+            for entry in lock.routing_table.values_mut() {
                 if !entry.ttl {
                     entry.hop_count = POISE_UNREACHABLE;
                 }
@@ -38,7 +38,7 @@ pub async fn heartbeat(state: Arc<Mutex<Shared>>) -> Result<(), SendError<Channe
         // Send STU to all peers
         {
             let lock = state.lock().await;
-            for (_, tx) in &lock.peers {
+            for tx in lock.peers.values() {
                 tx.send(ChannelEvent::Routing(STU))?;
             }
         }

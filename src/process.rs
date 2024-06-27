@@ -103,12 +103,10 @@ pub async fn process(
                     //we received a message to be forwarded
                     ChannelEvent::Forward(mut packet) => {
                         //decrease ttl and send package
-                        match &mut packet {
-                            Packet::RoutedPacket(routed_packet) => {
-                                routed_packet.header.ttl -= 1;
-                            },
-                            _ => {},
+                        if let Packet::RoutedPacket(routed_packet) = &mut packet {
+                            routed_packet.header.ttl -= 1;
                         }
+
                         peer.swag_coder.send(packet).await?;
                     }
                     ChannelEvent::Routing(type_id) => {
