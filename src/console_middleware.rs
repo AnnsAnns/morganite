@@ -45,7 +45,7 @@ pub async fn handle_console(state: Arc<Mutex<Shared>>) -> Result<(), Box<dyn Err
         // Since this is the only place where we're reading from the cmd receiver
         // Still required a Mutex<> since the compiler doesn't know that
 
-        tracing::debug!("Waiting for console input");
+        //tracing::debug!("Waiting for console input");
 
         // Create timer for tokio::select to prevent blocking
         let timer = tokio::time::sleep(tokio::time::Duration::from_millis(100));
@@ -89,11 +89,11 @@ pub async fn handle_console(state: Arc<Mutex<Shared>>) -> Result<(), Box<dyn Err
                                 },
                                 Commands::Contacts => {
                                     // Display the routing table
-                                    tracing::debug!("Displaying routing table");
+                                    //tracing::debug!("Displaying routing table");
                                         let mut state_lock = state.lock().await;
                                         let routing_table = state_lock.routing_table.clone();
 
-                                        tracing::debug!("Sent routing table to TUI");
+                                        //tracing::debug!("Sent routing table to TUI");
                                         if let Err(e) = state_lock.console_input_sender.send(ChannelEvent::Contacts(routing_table)) {
                                             tracing::error!("Error sending routing table to TUI: {:?}", e);
                                         }
@@ -210,6 +210,6 @@ pub async fn handle_console(state: Arc<Mutex<Shared>>) -> Result<(), Box<dyn Err
 
         }
 
-        tracing::debug!("Finished processing command");
+        //tracing::debug!("Finished processing command");
     }
 }

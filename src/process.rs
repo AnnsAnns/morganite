@@ -216,9 +216,11 @@ pub async fn process(
                                         lock.update_routing_table(routing_packet.table.clone(),addr).await;
                                         reply_table = lock.get_routing_table(addr, local_addr).await;
                                     }
-                                    let reply_routing_packet: RoutingPacket = RoutingPacket{header: reply_header, table: reply_table};
+                                    let reply_routing_packet: RoutingPacket = RoutingPacket{header: reply_header.clone(), table: reply_table};
                                     if *type_id == CR || *type_id == SCC{
                                         let id = type_id + 1;
+                                        //send CRR or SCCR
+                                        tracing::info!("replying to CR or SCC: {type_id} with {id} to {:?}.", reply_header);
                                         peer.swag_coder.send(Packet::RoutingPacket(reply_routing_packet, id)).await?;
                                     }
                                 },
