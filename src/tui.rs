@@ -127,7 +127,7 @@ pub fn tui(receiver: Rx) -> Result<()> {
     // Main Loop
     while !tui.exit {
         terminal.draw(|frame| {
-            draw_ui(frame, &tui);
+            draw_ui(frame, &tui).unwrap();
         })?;
 
         // Send a contacts request every 3 seconds to keep the routing table updated

@@ -47,7 +47,7 @@ pub async fn process(
     // A client has connected, let's let everyone know.
     {
         let mut state = state.lock().await;
-        let msg = tracing::info!("{addr} has joined the chat");
+        tracing::info!("{addr} has joined the chat");
         state
             .broadcast(addr, &ChannelEvent::Join(addr.to_string()))
             .await;
@@ -277,7 +277,7 @@ pub async fn process(
         state.peers.remove(&addr);
 
         // Poise reverse routing table
-        for (dest, rt_entry) in state.routing_table.iter_mut() {
+        for (_dest, rt_entry) in state.routing_table.iter_mut() {
             if rt_entry.next == addr {
                 rt_entry.hop_count = POISE_UNREACHABLE;
             }

@@ -29,6 +29,5 @@ pub enum ChannelEvent {
     Contacts(HashMap<SocketAddr, RoutingTableEntry>),
     CommandReceiver(Sender<ChannelEvent>),
     MessageToTUI(String, String, SocketAddr), //message, sender, destination
-    LogToTerminal(String),
-    Unknown
+    LogToTerminal(String)
 }

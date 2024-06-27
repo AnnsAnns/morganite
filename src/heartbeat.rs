@@ -22,7 +22,7 @@ pub async fn heartbeat(state: Arc<Mutex<Shared>>) -> Result<(), SendError<Channe
         // Check for ttl flag
         {
             let mut lock = state.lock().await;
-            for (addr, entry) in &mut lock.routing_table {
+            for (_addr, entry) in &mut lock.routing_table {
                 if !entry.ttl {
                     entry.hop_count = POISE_UNREACHABLE;
                 }
