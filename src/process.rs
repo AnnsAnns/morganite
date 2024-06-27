@@ -109,14 +109,16 @@ pub async fn process(
                     }
                     ChannelEvent::Routing(type_id) => {
                         //get current routing table
-                        let rt: Vec<RoutingEntry>;
-                        {
+                        let rt = if type_id != SCC {
                             let mut lock = state.lock().await;
-                            rt = lock.get_routing_table(addr,local_addr).await;
-                        }
+                            lock.get_routing_table(addr,local_addr).await
+                        } else {
+                            Vec::new()
+                        };
+
                         let routing_packet = RoutingPacket {
                             header,
-                            table: rt,
+                            table: Some(rt),
                         };
                         tracing::info!("sending a routing packet.");
                         peer.swag_coder.send(Packet::RoutingPacket(routing_packet,type_id)).await?;
@@ -200,9 +202,15 @@ pub async fn process(
                                 dest_port: addr.port(),
                                 ttl: 16,
                             };
+
+                            let routingtable = match &routing_packet.table {
+                                Some(table) => table.clone(),
+                                None => Vec::new(),
+                            };
+
                             match *type_id {
                                 //routing packet type_ids:
-                                CR | SCC | STU => { 
+                                CR | STU => { 
                                     if *type_id == CR {
                                         //Add connection to routing table with source ip + port as target and stream address as next
                                         let target_address: SocketAddr = (routing_packet.header.source_ip.clone() + ":" + &routing_packet.header.source_port.to_string()).parse::<SocketAddr>().unwrap();
@@ -213,10 +221,10 @@ pub async fn process(
                                     let reply_table;
                                     {
                                         let mut lock = state.lock().await;
-                                        lock.update_routing_table(routing_packet.table.clone(),addr).await;
+                                        lock.update_routing_table(routingtable,addr).await;
                                         reply_table = lock.get_routing_table(addr, local_addr).await;
                                     }
-                                    let reply_routing_packet: RoutingPacket = RoutingPacket{header: reply_header.clone(), table: reply_table};
+                                    let reply_routing_packet: RoutingPacket = RoutingPacket{header: reply_header.clone(), table: Some(reply_table)};
                                     if *type_id == CR || *type_id == SCC{
                                         let id = type_id + 1;
                                         //send CRR or SCCR
@@ -227,12 +235,17 @@ pub async fn process(
                                 CRR => {
                                     //update routing table based on received information:
                                     let mut lock = state.lock().await;
-                                    lock.update_routing_table(routing_packet.table.clone(), addr).await;
+                                    lock.update_routing_table(routingtable, addr).await;
                                 },
+                                SCC => {
+                                    // Send a SCCR to the sender
+                                    tracing::info!("replying to SCC with SCCR to {:?}.", reply_header);
+                                    let reply_routing_packet: RoutingPacket = RoutingPacket{header: reply_header.clone(), table: Some(Vec::new())};
+                                    peer.swag_coder.send(Packet::RoutingPacket(reply_routing_packet, SCCR)).await?;
+                                }
                                 SCCR => {
-                                    //update routing table based on received information and mark the sender as responding:
+                                    // Mark the sender as responding:
                                     let mut lock = state.lock().await;
-                                    lock.update_routing_table(routing_packet.table.clone(), addr).await;
                                     let target_address: SocketAddr = (routing_packet.header.source_ip.clone() + ":" + &routing_packet.header.source_port.to_string()).parse::<SocketAddr>().unwrap();
                                     lock.routing_table.entry(target_address).and_modify(|rt_entry| rt_entry.ttl = true);
                                 },

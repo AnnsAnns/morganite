@@ -135,6 +135,8 @@ impl Encoder<Packet> for SwagCoder {
     fn encode(&mut self, item: Packet, dst: &mut BytesMut) -> Result<(), Self::Error> {
         let payload_bytes = match item.clone() {
             Packet::RoutingPacket(packet,_) => {
+                tracing::debug!("Encoding routing packet: {:?}", serde_json::to_string(&packet).unwrap());
+
                 let packet_bytes = match serde_json::to_vec(&packet) {
                     Ok(bytes) => bytes,
                     Err(e) => {

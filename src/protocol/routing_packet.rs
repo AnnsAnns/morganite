@@ -17,7 +17,7 @@ pub struct  RoutingEntry { //not sure about the int types here, we didn't specif
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct RoutingPacket {
     pub header: SharedHeader,
-    pub table: Vec<RoutingEntry>, //works perfectly like this 
+    pub table: Option<Vec<RoutingEntry>>, //works perfectly like this 
 }
 
 #[test]
@@ -52,7 +52,7 @@ fn test_parsing_routing_packet() {
     assert_eq!(packet.header.dest_ip, "192.168.234.233");
     assert_eq!(packet.header.dest_port, 234);
     assert_eq!(packet.header.ttl, 16);
-    assert_eq!(packet.table, vec![RoutingEntry
+    assert_eq!(packet.table, Some(vec![RoutingEntry
         {
           target_ip: "10.0.0.5".to_string(),
           target_port: 1234,
@@ -67,7 +67,7 @@ fn test_parsing_routing_packet() {
           next_port: 1234,
           hop_count: 2
         }
-    ]);
+    ]));
 
 }
 
@@ -90,7 +90,7 @@ fn test_serializing_routing_packet() {
     }];
     let packet = RoutingPacket {
         header: SharedHeader {source_ip: "192.168.101.101".to_string(), source_port: 1234, dest_ip: "153.132.143.121".to_string(), dest_port: 4321, ttl: 32},
-        table,
+        table: Some(table),
     };
     let json = serde_json::to_string(&packet).unwrap();
 
