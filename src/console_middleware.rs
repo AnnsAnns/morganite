@@ -34,12 +34,19 @@ pub async fn handle_console(state: Arc<Mutex<Shared>>) -> Result<(), Box<dyn Err
     // Sleep for 5 seconds to allow the server to start up
     tokio::time::sleep(tokio::time::Duration::from_secs(3)).await;
     // Send the command receiver to the TUI
-    state
+    match state
         .lock()
         .await
         .console_input_sender
         .send(ChannelEvent::CommandReceiver(command_sender))
-        .unwrap();
+    {
+        Ok(_) => {tracing::info!("Sent command receiver to TUI");}
+        Err(e) => {
+            tracing::error!("Error sending command receiver to TUI: {:?}", e);
+            // Exit the application
+            std::process::exit(1);
+        }
+    }
 
     loop {
         // We're locking the cmd receiver, possibly for a long time but this is actually fine
