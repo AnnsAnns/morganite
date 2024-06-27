@@ -205,7 +205,7 @@ impl Encoder<Packet> for SwagCoder {
 #[test]
 pub fn test_weird_decode() {
     let mut coder = SwagCoder::new();
-    let packet = RoutedPacket { header: SharedHeader { source_ip: "127.0.0.1".to_string(), source_port: "58471".to_string(), dest_ip: "127.0.0.1".to_string(), dest_port: "6143".to_string(), ttl: 16 }, nickname: "TODO".to_string(), message: "hi".to_string() };
+    let packet = RoutedPacket { header: SharedHeader { source_ip: "127.0.0.1".to_string(), source_port: 58471, dest_ip: "127.0.0.1".to_string(), dest_port: 6143, ttl: 16 }, nickname: "TODO".to_string(), message: "hi".to_string() };
     let mut encoded= BytesMut::new();
     coder.encode(Packet::RoutedPacket((packet)),&mut encoded).unwrap();
     let result = coder.decode(&mut encoded);

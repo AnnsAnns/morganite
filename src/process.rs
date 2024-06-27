@@ -75,15 +75,15 @@ pub async fn process(
                 let mut header = SharedHeader {
                     //source addr is listener!
                     source_ip: listener_address.ip().to_string(),
-                    source_port: listener_address.port().to_string(),
+                    source_port: listener_address.port(),
                     dest_ip: addr.ip().to_string(),
-                    dest_port: addr.port().to_string(),
+                    dest_port: addr.port(),
                     ttl: 16,
                 };
                 match event {
                     ChannelEvent::Message(msg, dest_addr) => {
                         header.dest_ip = dest_addr.ip().to_string();
-                        header.dest_port = dest_addr.port().to_string();
+                        header.dest_port = dest_addr.port();
                         // Get the nickname
                         let nickname = {
                             let state = state.lock().await;
@@ -195,9 +195,9 @@ pub async fn process(
                             //we received a routing packet, check which one and handle it:
                             let reply_header = SharedHeader {
                                 source_ip: listener_address.ip().to_string(),
-                                source_port: listener_address.port().to_string(),
+                                source_port: listener_address.port(),
                                 dest_ip: addr.ip().to_string(),
-                                dest_port: addr.port().to_string(),
+                                dest_port: addr.port(),
                                 ttl: 16,
                             };
                             match *type_id {
@@ -205,7 +205,7 @@ pub async fn process(
                                 CR | SCC | STU => { 
                                     if *type_id == CR {
                                         //Add connection to routing table with source ip + port as target and stream address as next
-                                        let target_address: SocketAddr = (routing_packet.header.source_ip.clone() + ":" + &routing_packet.header.source_port.clone()).parse::<SocketAddr>().unwrap();
+                                        let target_address: SocketAddr = (routing_packet.header.source_ip.clone() + ":" + &routing_packet.header.source_port.to_string()).parse::<SocketAddr>().unwrap();
                                         let mut lock = state.lock().await;
                                         lock.routing_table.insert(target_address, RoutingTableEntry {next:addr, hop_count: 1, ttl: true});
                                     }
@@ -231,7 +231,7 @@ pub async fn process(
                                     //update routing table based on received information and mark the sender as responding:
                                     let mut lock = state.lock().await;
                                     lock.update_routing_table(routing_packet.table.clone(), addr).await;
-                                    let target_address: SocketAddr = (routing_packet.header.source_ip.clone() + ":" + &routing_packet.header.source_port.clone()).parse::<SocketAddr>().unwrap();
+                                    let target_address: SocketAddr = (routing_packet.header.source_ip.clone() + ":" + &routing_packet.header.source_port.to_string()).parse::<SocketAddr>().unwrap();
                                     lock.routing_table.entry(target_address).and_modify(|rt_entry| rt_entry.ttl = true);
                                 },
                                 //undefined type_id:

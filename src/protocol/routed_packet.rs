@@ -26,9 +26,9 @@ fn test_parsing_routed_packet() {
 
     let packet: RoutedPacket = serde_json::from_str(json).unwrap();
     assert_eq!(packet.header.source_ip, "192.168.123.122");
-    assert_eq!(packet.header.source_port, "6827");
+    assert_eq!(packet.header.source_port, 6827);
     assert_eq!(packet.header.dest_ip, "192.168.234.233");
-    assert_eq!(packet.header.dest_port, "234");
+    assert_eq!(packet.header.dest_port, 234);
     assert_eq!(packet.nickname, "Test");
     assert_eq!(packet.header.ttl, 16);
     assert_eq!(packet.message, "Test Data");
@@ -37,7 +37,7 @@ fn test_parsing_routed_packet() {
 #[test]
 fn test_serializing_routed_packet() {
     let packet = RoutedPacket {
-        header: SharedHeader {source_ip: "192.168.101.101".to_string(), source_port: "1234".to_string(), dest_ip: "153.132.143.121".to_string(), dest_port: "4321".to_string(), ttl: 32},
+        header: SharedHeader {source_ip: "192.168.101.101".to_string(), source_port: 1234, dest_ip: "153.132.143.121".to_string(), dest_port: 4321, ttl: 32},
         nickname: "Test".to_string(),
         message: "Testing".to_string(),
     };

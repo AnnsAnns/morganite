@@ -48,9 +48,9 @@ fn test_parsing_routing_packet() {
     }"#;
     let packet: RoutingPacket = serde_json::from_str(json).unwrap();
     assert_eq!(packet.header.source_ip, "192.168.123.122");
-    assert_eq!(packet.header.source_port, "6827");
+    assert_eq!(packet.header.source_port, 6827);
     assert_eq!(packet.header.dest_ip, "192.168.234.233");
-    assert_eq!(packet.header.dest_port, "234");
+    assert_eq!(packet.header.dest_port, 234);
     assert_eq!(packet.header.ttl, 16);
     assert_eq!(packet.table, vec![RoutingEntry
         {
@@ -89,7 +89,7 @@ fn test_serializing_routing_packet() {
       hop_count: 2
     }];
     let packet = RoutingPacket {
-        header: SharedHeader {source_ip: "192.168.101.101".to_string(), source_port: "1234".to_string(), dest_ip: "153.132.143.121".to_string(), dest_port: "4321".to_string(), ttl: 32},
+        header: SharedHeader {source_ip: "192.168.101.101".to_string(), source_port: 1234, dest_ip: "153.132.143.121".to_string(), dest_port: 4321, ttl: 32},
         table,
     };
     let json = serde_json::to_string(&packet).unwrap();
