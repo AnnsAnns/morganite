@@ -1,20 +1,15 @@
-
 use swag_coding::SwagCoder;
-use tokio::net::{TcpStream};
+use tokio::net::TcpStream;
 use tokio::sync::{mpsc, Mutex};
 
-use tokio_util::codec::{Framed};
-
-
-
-
+use tokio_util::codec::Framed;
 
 use std::io;
 
 use std::sync::Arc;
 
 use crate::shared::{Rx, Shared};
-use crate::{swag_coding};
+use crate::swag_coding;
 
 /// The state for each connected client.
 pub struct Peer {
@@ -48,8 +43,8 @@ impl Peer {
             let mut lock = state.lock().await;
             lock.peers.insert(addr, tx);
         }
-       
-        tracing::info!("added address: {}",addr);
+
+        tracing::info!("added address: {}", addr);
         Ok(Peer { swag_coder, rx })
     }
 }

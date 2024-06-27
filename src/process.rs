@@ -1,24 +1,22 @@
 use channel_events::ChannelEvent;
 
 use swag_coding::SwagCoder;
-use tokio::net::{TcpStream};
-use tokio::sync::{Mutex};
+use tokio::net::TcpStream;
+use tokio::sync::Mutex;
 use tokio_stream::StreamExt;
-use tokio_util::codec::{Framed};
+use tokio_util::codec::Framed;
 
 use futures::SinkExt;
-
 
 use std::error::Error;
 
 use std::net::SocketAddr;
 use std::sync::Arc;
 
-
 use crate::heartbeat::POISE_UNREACHABLE;
 use crate::peer::Peer;
 use crate::protocol::routed_packet::RoutedPacket;
-use crate::protocol::routing_packet::{RoutingPacket};
+use crate::protocol::routing_packet::RoutingPacket;
 use crate::protocol::shared_header::SharedHeader;
 use crate::protocol::Packet;
 use crate::protocol::{CR, CRR, MESSAGE, SCC, SCCR, STU};
@@ -39,7 +37,13 @@ pub async fn process(
             panic!(); //TODO maybe different error handling
         }
     };
-    let listener_address = state.lock().await.listener_addr.clone().parse::<SocketAddr>().unwrap();
+    let listener_address = state
+        .lock()
+        .await
+        .listener_addr
+        .clone()
+        .parse::<SocketAddr>()
+        .unwrap();
     let swag_coder = Framed::new(stream, SwagCoder::new());
 
     // Register our peer with state which internally sets up some channels.
@@ -210,7 +214,7 @@ pub async fn process(
 
                             match *type_id {
                                 //routing packet type_ids:
-                                CR | STU => { 
+                                CR | STU => {
                                     if *type_id == CR {
                                         //Add connection to routing table with source ip + port as target and stream address as next
                                         let target_address: SocketAddr = (routing_packet.header.source_ip.clone() + ":" + &routing_packet.header.source_port.to_string()).parse::<SocketAddr>().unwrap();

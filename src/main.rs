@@ -1,34 +1,27 @@
-
 use console_middleware::handle_console;
 use shared::Shared;
 
-use tokio::net::{TcpListener};
+use tokio::net::TcpListener;
 use tokio::sync::{mpsc, Mutex};
-
-
-
 
 use tracing::Level;
 
-use std::{env, thread};
 use std::error::Error;
+use std::{env, thread};
 
-
-use std::sync::Arc;
 use crate::process::process;
+use std::sync::Arc;
 
 // TUI
 
-
-
-mod protocol;
-mod swag_coding;
 mod channel_events;
 mod console_middleware;
 mod heartbeat;
-mod process;
 mod peer;
+mod process;
+mod protocol;
 mod shared;
+mod swag_coding;
 mod tui;
 
 /// Use Tokio Runtime, Multi-Threaded with a Thread Pool based on the number of cores available
@@ -87,9 +80,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     });
 
     // Spawn new thread for TUI
-    thread::spawn(move || {
-        tui::tui(console_input_rx)
-    });
+    thread::spawn(move || tui::tui(console_input_rx));
 
     //Loop accepting new connections from other clients creating a task for each of them handling their messages
     loop {
@@ -101,7 +92,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
         // Spawn our handler to be run asynchronously.
         tokio::spawn(async move {
-            tracing::info!("accepted connection to {}",addr);
+            tracing::info!("accepted connection to {}", addr);
             if let Err(e) = process(state, stream, addr, false).await {
                 tracing::info!("an error occurred; error = {:?}", e);
             }

@@ -1,8 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-
 use super::shared_header::SharedHeader;
-
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct RoutedPacket {
@@ -37,7 +35,13 @@ fn test_parsing_routed_packet() {
 #[test]
 fn test_serializing_routed_packet() {
     let packet = RoutedPacket {
-        header: SharedHeader {source_ip: "192.168.101.101".to_string(), source_port: 1234, dest_ip: "153.132.143.121".to_string(), dest_port: 4321, ttl: 32},
+        header: SharedHeader {
+            source_ip: "192.168.101.101".to_string(),
+            source_port: 1234,
+            dest_ip: "153.132.143.121".to_string(),
+            dest_port: 4321,
+            ttl: 32,
+        },
         nickname: "Test".to_string(),
         message: "Testing".to_string(),
     };

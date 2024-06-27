@@ -1,25 +1,26 @@
-use tokio::net::{TcpStream};
+use tokio::net::TcpStream;
 use tokio::sync::{mpsc, Mutex};
-use tokio_stream::StreamExt;
-
 
 use crate::channel_events::{ChannelEvent, Commands};
 use crate::process::process;
-use futures::SinkExt;
-
 
 use std::error::Error;
 
 use std::net::SocketAddr;
 use std::sync::Arc;
 
-
 use crate::shared::{RoutingTableEntry, Shared};
 
 ///TUI handling the users console inputs
 pub async fn handle_console(state: Arc<Mutex<Shared>>) -> Result<(), Box<dyn Error>> {
     let addr = "127.0.0.1:4444".parse::<SocketAddr>()?;
-    let client_addr = state.lock().await.listener_addr.clone().parse::<SocketAddr>().unwrap();
+    let client_addr = state
+        .lock()
+        .await
+        .listener_addr
+        .clone()
+        .parse::<SocketAddr>()
+        .unwrap();
 
     // Create a channel for this peer
     let (tx, mut rx) = mpsc::unbounded_channel();
@@ -112,7 +113,7 @@ pub async fn handle_console(state: Arc<Mutex<Shared>>) -> Result<(), Box<dyn Err
                                         match lock.routing_table.get(&addr) {
                                             Some(direct) => {
                                                 if direct.hop_count == 1 {
-                                                    already_connected = true; 
+                                                    already_connected = true;
                                                 }
                                                 else {
                                                     already_connected = false;

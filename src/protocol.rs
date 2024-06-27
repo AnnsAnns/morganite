@@ -1,4 +1,3 @@
-
 use routed_packet::RoutedPacket;
 use routing_packet::RoutingPacket;
 
@@ -19,4 +18,3 @@ pub const CRR: u8 = 3;
 pub const SCC: u8 = 4;
 pub const SCCR: u8 = 5;
 pub const STU: u8 = 6;
-

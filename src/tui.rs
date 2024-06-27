@@ -1,19 +1,18 @@
 use std::collections::HashMap;
 use std::io::Result;
 use std::net::SocketAddr;
-use std::{
-    io::{stdout},
-    time::Duration,
-};
+use std::{io::stdout, time::Duration};
 
 use crossterm::{
     event::{self, Event, KeyCode, KeyEventKind},
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
     ExecutableCommand,
 };
-use ratatui::layout::{Margin};
+use ratatui::layout::Margin;
 
-use ratatui::widgets::{List, ListDirection, Scrollbar, ScrollbarOrientation, ScrollbarState, Wrap};
+use ratatui::widgets::{
+    List, ListDirection, Scrollbar, ScrollbarOrientation, ScrollbarState, Wrap,
+};
 use ratatui::{
     layout::{Constraint, Direction, Layout},
     prelude::{CrosstermBackend, Terminal},
@@ -22,12 +21,10 @@ use ratatui::{
 };
 use std::sync::mpsc::Sender;
 
-
-
 use crate::shared::RoutingTableEntry;
 use crate::{
     channel_events::{ChannelEvent, Commands},
-    shared::{Rx},
+    shared::Rx,
 };
 
 struct TUI {
@@ -140,8 +137,7 @@ pub fn tui(receiver: Rx) -> Result<()> {
         if let Ok(event) = tui.receiver.try_recv() {
             match event {
                 ChannelEvent::Message(msg, addr) => {
-                    tui.chat_room
-                        .push(format!("{}: {}", addr, msg));
+                    tui.chat_room.push(format!("{}: {}", addr, msg));
                 }
                 ChannelEvent::Command(cmd) => {
                     tui.log.push(format!("Received command: {:?}", cmd));
@@ -185,11 +181,19 @@ pub fn tui(receiver: Rx) -> Result<()> {
                         }
                         KeyCode::Up => {
                             tui.input_history_index = tui.input_history_index.saturating_sub(1);
-                            tui.input = tui.input_history.get(tui.input_history_index).unwrap_or(&"".to_string()).to_string();
+                            tui.input = tui
+                                .input_history
+                                .get(tui.input_history_index)
+                                .unwrap_or(&"".to_string())
+                                .to_string();
                         }
                         KeyCode::Down => {
                             tui.input_history_index = tui.input_history_index.saturating_add(1);
-                            tui.input = tui.input_history.get(tui.input_history_index).unwrap_or(&"".to_string()).to_string();
+                            tui.input = tui
+                                .input_history
+                                .get(tui.input_history_index)
+                                .unwrap_or(&"".to_string())
+                                .to_string();
                         }
                         KeyCode::Left => {
                             if tui.log_index < tui.log.len() {
@@ -204,8 +208,6 @@ pub fn tui(receiver: Rx) -> Result<()> {
                             let cmd = command_to_event(tui.input.as_str());
                             tui.input_history.push(tui.input.clone()); // Save the input to history
                             tui.input_history_index = tui.input_history.len(); // Reset the history index
-
-                            
 
                             // Prepare to exit if the command is quit
                             match cmd {
@@ -282,7 +284,11 @@ fn draw_ui(frame: &mut Frame, tui: &TUI) -> Result<()> {
 
     let top_inner_layout = Layout::default()
         .direction(Direction::Horizontal)
-        .constraints(vec![Constraint::Percentage(33), Constraint::Percentage(33), Constraint::Percentage(33)])
+        .constraints(vec![
+            Constraint::Percentage(33),
+            Constraint::Percentage(33),
+            Constraint::Percentage(33),
+        ])
         .split(root_layout[1]);
 
     // Top Input Field
@@ -305,10 +311,11 @@ fn draw_ui(frame: &mut Frame, tui: &TUI) -> Result<()> {
     );
 
     let scrollbar = Scrollbar::new(ScrollbarOrientation::VerticalRight)
-    .begin_symbol(Some("↑"))
-    .end_symbol(Some("↓"));
+        .begin_symbol(Some("↑"))
+        .end_symbol(Some("↓"));
 
-    let mut scrollbar_state = ScrollbarState::new(tui.log.len()).position(tui.log.len() - tui.log_index);
+    let mut scrollbar_state =
+        ScrollbarState::new(tui.log.len()).position(tui.log.len() - tui.log_index);
 
     frame.render_stateful_widget(
         scrollbar,
@@ -335,14 +342,16 @@ fn draw_ui(frame: &mut Frame, tui: &TUI) -> Result<()> {
 
     // Display Routing Entries
     let mut rounting_entries =
-    "Node Addr: | Hops | Via Addr:\n =============================\n".to_string();
-for (addr, entry) in tui.contacts.iter() {
-    let entry = format!("{:?} | {:?} | {:?} \n", addr, entry.hop_count, entry.next);
-    rounting_entries.push_str(&entry);
-}
+        "Node Addr: | Hops | Via Addr:\n =============================\n".to_string();
+    for (addr, entry) in tui.contacts.iter() {
+        let entry = format!("{:?} | {:?} | {:?} \n", addr, entry.hop_count, entry.next);
+        rounting_entries.push_str(&entry);
+    }
 
     frame.render_widget(
-        Paragraph::new(rounting_entries).block(Block::new().borders(Borders::ALL).title("Routing Table")).wrap(Wrap {trim: true}),
+        Paragraph::new(rounting_entries)
+            .block(Block::new().borders(Borders::ALL).title("Routing Table"))
+            .wrap(Wrap { trim: true }),
         top_inner_layout[2],
     );
 

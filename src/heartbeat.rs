@@ -2,7 +2,11 @@ use std::{sync::Arc, time::Duration};
 
 use tokio::sync::{mpsc::error::SendError, Mutex};
 
-use crate::{channel_events::ChannelEvent, protocol::{SCC, STU}, shared::Shared};
+use crate::{
+    channel_events::ChannelEvent,
+    protocol::{SCC, STU},
+    shared::Shared,
+};
 
 pub const POISE_UNREACHABLE: i32 = 32;
 
