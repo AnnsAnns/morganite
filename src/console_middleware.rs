@@ -1,19 +1,19 @@
-use tokio::net::{TcpListener, TcpStream};
+use tokio::net::{TcpStream};
 use tokio::sync::{mpsc, Mutex};
 use tokio_stream::StreamExt;
-use tokio_util::codec::{Framed, FramedRead, LinesCodec};
+
 
 use crate::channel_events::{ChannelEvent, Commands};
 use crate::process::process;
 use futures::SinkExt;
-use std::collections::HashMap;
-use std::env;
+
+
 use std::error::Error;
-use std::io;
+
 use std::net::SocketAddr;
 use std::sync::Arc;
 
-use crate::protocol::CR;
+
 use crate::shared::{RoutingTableEntry, Shared};
 
 ///TUI handling the users console inputs
@@ -28,7 +28,7 @@ pub async fn handle_console(state: Arc<Mutex<Shared>>) -> Result<(), Box<dyn Err
     state.lock().await.peers.insert(addr, tx);
 
     // Create a channel for the console input
-    let (command_sender, mut command_receiver) = std::sync::mpsc::channel::<ChannelEvent>();
+    let (command_sender, command_receiver) = std::sync::mpsc::channel::<ChannelEvent>();
 
     // Sleep for 5 seconds to allow the server to start up
     tokio::time::sleep(tokio::time::Duration::from_secs(3)).await;
@@ -90,7 +90,7 @@ pub async fn handle_console(state: Arc<Mutex<Shared>>) -> Result<(), Box<dyn Err
                                 Commands::Contacts => {
                                     // Display the routing table
                                     //tracing::debug!("Displaying routing table");
-                                        let mut state_lock = state.lock().await;
+                                        let state_lock = state.lock().await;
                                         let routing_table = state_lock.routing_table.clone();
 
                                         //tracing::debug!("Sent routing table to TUI");
@@ -106,7 +106,7 @@ pub async fn handle_console(state: Arc<Mutex<Shared>>) -> Result<(), Box<dyn Err
                                 },
                                 Commands::Connect(addr) => {
                                     //check wether there is already a direct connection to the target client:
-                                    let mut already_connected: bool;
+                                    let already_connected: bool;
                                     {
                                         let lock = state.lock().await;
                                         match lock.routing_table.get(&addr) {

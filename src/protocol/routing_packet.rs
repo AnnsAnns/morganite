@@ -1,4 +1,4 @@
-use std::array;
+
 
 use serde::{Deserialize, Serialize};
 
@@ -25,9 +25,9 @@ fn test_parsing_routing_packet() {
     let json = r#"{"header":{
         "packet_type":       "data_message",
         "source_ip":          "192.168.123.122",
-        "source_port":        "6827",
+        "source_port":        6827,
         "dest_ip":     "192.168.234.233",
-        "dest_port":   "234",
+        "dest_port":   234,
         "ttl":                16},
         "table":           [
             {
@@ -96,6 +96,6 @@ fn test_serializing_routing_packet() {
 
     assert_eq!(
         json,
-        r#"{"header":{"source_ip":"192.168.101.101","source_port":"1234","dest_ip":"153.132.143.121","dest_port":"4321","ttl":32},"table":[{"target_ip":"10.0.0.5","target_port":1234,"next_ip":"10.0.0.3","next_port":1234,"hop_count":4},{"target_ip":"10.0.0.11","target_port":1234,"next_ip":"10.0.0.6","next_port":1234,"hop_count":2}]}"#
+        r#"{"header":{"source_ip":"192.168.101.101","source_port":1234,"dest_ip":"153.132.143.121","dest_port":4321,"ttl":32},"table":[{"target_ip":"10.0.0.5","target_port":1234,"next_ip":"10.0.0.3","next_port":1234,"hop_count":4},{"target_ip":"10.0.0.11","target_port":1234,"next_ip":"10.0.0.6","next_port":1234,"hop_count":2}]}"#
     );
 }

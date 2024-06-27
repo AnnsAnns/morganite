@@ -2,8 +2,7 @@ use std::collections::HashMap;
 use std::io::Result;
 use std::net::SocketAddr;
 use std::{
-    io::{stdout, Stdout},
-    sync::{mpsc::Receiver, Arc},
+    io::{stdout},
     time::Duration,
 };
 
@@ -12,23 +11,23 @@ use crossterm::{
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
     ExecutableCommand,
 };
-use ratatui::layout::{Margin, Size};
-use ratatui::text::Text;
-use ratatui::widgets::{BorderType, List, ListDirection, Scrollbar, ScrollbarOrientation, ScrollbarState, Wrap};
+use ratatui::layout::{Margin};
+
+use ratatui::widgets::{List, ListDirection, Scrollbar, ScrollbarOrientation, ScrollbarState, Wrap};
 use ratatui::{
     layout::{Constraint, Direction, Layout},
-    prelude::{CrosstermBackend, Stylize, Terminal},
+    prelude::{CrosstermBackend, Terminal},
     widgets::{Block, Borders, Paragraph},
     Frame,
 };
 use std::sync::mpsc::Sender;
-use tokio::sync::{mpsc, Mutex};
-use tui_nodes::{Connection, NodeGraph, NodeLayout};
+
+
 
 use crate::shared::RoutingTableEntry;
 use crate::{
     channel_events::{ChannelEvent, Commands},
-    shared::{Rx, Shared, Tx},
+    shared::{Rx},
 };
 
 struct TUI {

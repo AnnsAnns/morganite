@@ -4,7 +4,7 @@ use std::{net::SocketAddr};
 use std::sync::mpsc::Sender;
 
 use crate::shared::RoutingTableEntry;
-use crate::{protocol::Packet, shared::Tx};
+use crate::{protocol::Packet};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Commands {

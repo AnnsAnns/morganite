@@ -1,24 +1,24 @@
 use channel_events::ChannelEvent;
-use futures::stream::TryForEach;
+
 use swag_coding::SwagCoder;
-use tokio::net::{TcpListener, TcpStream};
-use tokio::sync::{mpsc, Mutex};
+use tokio::net::{TcpStream};
+use tokio::sync::{Mutex};
 use tokio_stream::StreamExt;
-use tokio_util::codec::{Framed, FramedRead, LinesCodec};
+use tokio_util::codec::{Framed};
 
 use futures::SinkExt;
-use std::collections::HashMap;
-use std::env;
+
+
 use std::error::Error;
-use std::io;
+
 use std::net::SocketAddr;
 use std::sync::Arc;
 
-use crate::channel_events::Commands;
+
 use crate::heartbeat::POISE_UNREACHABLE;
 use crate::peer::Peer;
 use crate::protocol::routed_packet::RoutedPacket;
-use crate::protocol::routing_packet::{RoutingEntry, RoutingPacket};
+use crate::protocol::routing_packet::{RoutingPacket};
 use crate::protocol::shared_header::SharedHeader;
 use crate::protocol::Packet;
 use crate::protocol::{CR, CRR, MESSAGE, SCC, SCCR, STU};
@@ -133,7 +133,7 @@ pub async fn process(
             result = peer.swag_coder.next() => match result {
                 Some(Ok(packet)) => {
                     {
-                        let mut state = state.lock().await;
+                        let state = state.lock().await;
                         tracing::info!("New Packet from {}: {:#?}", addr, packet);
                         state.console_input_sender.send(ChannelEvent::LogToTerminal(format!("New Packet from {}: {:?}", addr, packet))).unwrap();
                     }

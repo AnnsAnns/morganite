@@ -1,6 +1,9 @@
-use tokio_util::{bytes::{Buf, BufMut, BytesMut}, codec::{Decoder, Encoder}};
+use tokio_util::{bytes::{BytesMut}, codec::{Decoder, Encoder}};
 
-use crate::protocol::{common_header::{CommonHeader, CommonHeaderUnparsed, COMMON_HEADER_LENGTH}, routed_packet::RoutedPacket, routing_packet::RoutingPacket, shared_header::SharedHeader, Packet, CR, CRR, MESSAGE, SCC, SCCR, STU};
+use crate::protocol::{common_header::{CommonHeader, CommonHeaderUnparsed, COMMON_HEADER_LENGTH}, routed_packet::RoutedPacket, routing_packet::RoutingPacket, Packet, CR, CRR, MESSAGE, SCC, SCCR, STU};
+
+#[cfg(test)]
+use crate::protocol::shared_header::SharedHeader;
 
 // Swag Decoder is a custom decoder for the SWAG protocol
 pub struct SwagCoder {
@@ -40,7 +43,7 @@ impl Decoder for SwagCoder {
                 return Ok(None);
             }
 
-            let mut header_bytes = src.split_to(COMMON_HEADER_LENGTH);
+            let header_bytes = src.split_to(COMMON_HEADER_LENGTH);
             
             // serde deserialization
             let header_unparsed: CommonHeaderUnparsed = match serde_json::from_slice(&header_bytes) {
@@ -121,11 +124,6 @@ impl Decoder for SwagCoder {
             self.has_common_header = false;
             return Ok(Some(packet));
         }
-
-        return Err(std::io::Error::new(
-            std::io::ErrorKind::Other,
-            format!("Error processing packet")
-        ));;
     }
 }
 
@@ -209,7 +207,7 @@ pub fn test_weird_decode() {
     let mut coder = SwagCoder::new();
     let packet = RoutedPacket { header: SharedHeader { source_ip: "127.0.0.1".to_string(), source_port: 58471, dest_ip: "127.0.0.1".to_string(), dest_port: 6143, ttl: 16 }, nickname: "TODO".to_string(), message: "hi".to_string() };
     let mut encoded= BytesMut::new();
-    coder.encode(Packet::RoutedPacket((packet)),&mut encoded).unwrap();
+    coder.encode(Packet::RoutedPacket(packet),&mut encoded).unwrap();
     let result = coder.decode(&mut encoded);
     println!("result: {:?}", result.unwrap());
 }

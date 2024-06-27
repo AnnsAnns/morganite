@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use serde_json::Result;
+
 
 use super::shared_header::SharedHeader;
 
@@ -16,9 +16,9 @@ fn test_parsing_routed_packet() {
     let json = r#"{"header":{
         "packet_type":       "data_message",
         "source_ip":          "192.168.123.122",
-        "source_port":        "6827",
+        "source_port":        6827,
         "dest_ip":     "192.168.234.233",
-        "dest_port":   "234",
+        "dest_port":   234,
         "ttl":                16},
         "nickname":           "Test",
         "message":               "Test Data"
@@ -46,6 +46,6 @@ fn test_serializing_routed_packet() {
 
     assert_eq!(
         json,
-        r#"{"header":{"source_ip":"192.168.101.101","source_port":"1234","dest_ip":"153.132.143.121","dest_port":"4321","ttl":32},"nickname":"Test","message":"Testing"}"#
+        r#"{"header":{"source_ip":"192.168.101.101","source_port":1234,"dest_ip":"153.132.143.121","dest_port":4321,"ttl":32},"nickname":"Test","message":"Testing"}"#
     );
 }
