@@ -15,7 +15,7 @@ pub async fn heartbeat(state: Arc<Mutex<Shared>>) -> Result<(), SendError<Channe
         // Send SCC to all peers
         {
             let lock = state.lock().await;
-            for (_, tx) in &lock.peers {
+            for tx in lock.peers.values() {
                 tx.send(ChannelEvent::Routing(SCC))?;
             }
         }

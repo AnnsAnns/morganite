@@ -40,7 +40,9 @@ pub async fn handle_console(state: Arc<Mutex<Shared>>) -> Result<(), Box<dyn Err
         .console_input_sender
         .send(ChannelEvent::CommandReceiver(command_sender))
     {
-        Ok(_) => {tracing::info!("Sent command receiver to TUI");}
+        Ok(_) => {
+            tracing::info!("Sent command receiver to TUI");
+        }
         Err(e) => {
             tracing::error!("Error sending command receiver to TUI: {:?}", e);
             // Exit the application
@@ -160,9 +162,6 @@ pub async fn handle_console(state: Arc<Mutex<Shared>>) -> Result<(), Box<dyn Err
                                     // Send message to specified client
                                     tracing::debug!("Sending message to: {}", addr);
 
-                                    // Get the client socket address
-                                    let client_addr = client_addr;
-
                                     // Get the routing table entry for the destination
                                     let routing_table_entry = {
                                         let lock = state.lock().await;
@@ -176,12 +175,11 @@ pub async fn handle_console(state: Arc<Mutex<Shared>>) -> Result<(), Box<dyn Err
                                     };
 
                                     // Get the channel to the next client/destination on the route
-                                    let target;
-                                    if routing_table_entry.next == client_addr {
-                                        target = addr;
+                                    let target = if routing_table_entry.next == client_addr {
+                                         addr
                                     } else {
-                                        target = routing_table_entry.next;
-                                    }
+                                         routing_table_entry.next
+                                    };
 
                                     let peer = {
                                         let lock = state.lock().await;
