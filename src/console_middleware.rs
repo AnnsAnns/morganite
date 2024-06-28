@@ -95,6 +95,19 @@ pub async fn handle_console(state: Arc<Mutex<Shared>>) -> Result<(), Box<dyn Err
                                     tracing::debug!("Quitting application");
                                     // Quit all tokio tasks
                                     // @TODO: Gracefully announce to all peers that we are quitting?
+                                    {
+                                        let mut lock = state.lock().await;
+                                        for entry in lock.routing_table.values_mut() {
+                                            entry.hop_count = 32;
+                                        }
+                                        for entry in lock.peers.values_mut() {
+                                            
+                                            if let Err(e) = entry.send(ChannelEvent::Routing(6)) {
+                                                tracing::error!("Error sending STU to quit gracefully: {:?}", e);
+                                            }
+                                        }
+
+                                    }
                                     std::process::exit(0);
                                 },
                                 Commands::Contacts => {
