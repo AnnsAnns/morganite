@@ -111,6 +111,7 @@ pub async fn process(
                     }
                     ChannelEvent::Routing(type_id) => {
                         //get current routing table
+                        tracing::info!("sending a routing packet. Type: {:?}", type_id);
                         let rt = if type_id != SCC {
                             let mut lock = state.lock().await;
                             lock.get_routing_table(addr,local_addr).await
@@ -122,7 +123,6 @@ pub async fn process(
                             header,
                             table: Some(rt),
                         };
-                        tracing::info!("sending a routing packet.");
                         peer.swag_coder.send(Packet::RoutingPacket(routing_packet,type_id)).await?;
                     }
                     _ => tracing::error!("Received Event: {:#?} is not implemented!", event),
@@ -145,7 +145,7 @@ pub async fn process(
                         Packet::RoutedPacket(routed_packet) => {
                             //we received a message, check who's the destination:
                             let packet_destination = format!("{}:{}",routed_packet.header.dest_ip,routed_packet.header.dest_port);
-                            match  packet_destination == local_addr.to_string() {
+                            match  packet_destination == listener_address.to_string() {
                                 true => {
                                     //message is for us, display message
                                     tracing::info!("{}: {}",routed_packet.nickname, routed_packet.message);
