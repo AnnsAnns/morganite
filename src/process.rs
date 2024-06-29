@@ -72,7 +72,7 @@ pub async fn process(
     // Process incoming messages until our stream is exhausted by a disconnect.
     loop {
         tokio::select! {
-            //another task send us a message:
+            //-----------------send something through this TCP socket-----------------
             Some(event) = peer.rx.recv() => {
                 tracing::info!("Received Event: {:#?}", event);
                 // create packet
@@ -131,7 +131,7 @@ pub async fn process(
 
 
             }
-            // A message was received from this tcp stream:
+            //-----------------received something through this TCP socket-----------------
             result = peer.swag_coder.next() => match result {
                 Some(Ok(packet)) => {
                     {
