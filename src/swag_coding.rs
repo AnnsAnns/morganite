@@ -171,7 +171,8 @@ impl Encoder<Packet> for SwagCoder {
         };
 
         // Calculate the checksum
-        let checksum = crc32fast::hash(&payload_bytes);
+        tracing::debug!("Payload bytes: {:?}", payload_bytes.as_slice());
+        let checksum = crc32fast::hash(&payload_bytes.as_slice());
         // Create the common header
         let header = CommonHeader {
             length: payload_bytes.len() as u16,
@@ -244,4 +245,47 @@ pub fn test_weird_decode() {
         .unwrap();
     let result = coder.decode(&mut encoded);
     println!("result: {:?}", result.unwrap());
+}
+
+#[test]
+pub fn test_recoding() {
+    let mut coder = SwagCoder::new();
+    let original_packet = RoutedPacket {
+        header: SharedHeader {
+            source_ip: "127.0.0.1".to_string(),
+            source_port: 58471,
+            dest_ip: "127.0.0.1".to_string(),
+            dest_port: 6143,
+            ttl: 16,
+        },
+        nickname: "test_nickname".to_string(),
+        message: "hello".to_string(),
+    };
+
+    // Encode the packet
+    let mut encoded = BytesMut::new();
+    coder
+        .encode(Packet::RoutedPacket(original_packet.clone()), &mut encoded)
+        .unwrap();
+
+    // Decode the packet
+    let decoded_packet = coder.decode(&mut encoded).unwrap().unwrap();
+
+    // Check that the decoded packet matches the original packet
+    if let Packet::RoutedPacket(decoded_routed_packet) = decoded_packet {
+        assert_eq!(original_packet, decoded_routed_packet);
+    } else {
+        panic!("Decoded packet is not of type RoutedPacket");
+    }
+
+    // Ensure buffer is empty after successful decode
+    assert!(encoded.is_empty());
+}
+
+#[test]
+pub fn test_checksum_creation() {
+    static EXPECTED_CHECKSUM: u32 = 593877371; // Generated via https://crc32.online/
+    let example_data = b"{\"header\":{\"source_ip\":\"10.241.51.185\",\"source_port\":46455,\"dest_ip\":\"10.241.51.185\",\"dest_port\":50847,\"ttl\":16},\"table\":[]}";
+    let checksum = crc32fast::hash(example_data);
+    assert_eq!(checksum, EXPECTED_CHECKSUM);
 }

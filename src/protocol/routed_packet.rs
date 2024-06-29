@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use super::shared_header::SharedHeader;
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct RoutedPacket {
     pub header: SharedHeader,
     pub nickname: String,
