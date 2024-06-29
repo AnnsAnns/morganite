@@ -27,13 +27,10 @@ mod tui;
 /// Use Tokio Runtime, Multi-Threaded with a Thread Pool based on the number of cores available
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
-    // Check whether ./logs/morganite.log exists & delete it if it does
-    if std::fs::metadata("logs/morganite.log").is_ok() {
-        std::fs::remove_file("logs/morganite.log")?;
-    }
-
+    // Generate timestamp for log file
+    let timestamp = chrono::Local::now().format("%Y-%m-%d_%H-%M-%S-%f").to_string();
     // construct a subscriber that logs formatted traces to file
-    let file_appender = tracing_appender::rolling::never("logs", "morganite.log");
+    let file_appender = tracing_appender::rolling::never("logs", format!("morganite_{}.log", timestamp));
     // use that subscriber to process traces emitted after this point
     tracing_subscriber::fmt()
         .compact()
