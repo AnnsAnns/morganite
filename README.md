@@ -16,4 +16,6 @@ See `help` for a list of available commands.
 
 ## License
 
-This project is licensed under EUPLv1.2 see [HERE](./LICENSE). It may not be used without adhering to the license or explicit permission from the authors.
+This project is licensed under EUPLv1.2 see [HERE](./LICENSE). It may not be used without adhering to the license or explicit permission from the authors. 
+
+**This project is part of a university course. Unlicensed usage of this project to fulfill the course requirements is not allowed and would be considered plagiarism! We do not take any responsibility for the consequences of foolish actions and explicitly warn against it!**
