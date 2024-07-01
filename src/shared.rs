@@ -74,11 +74,7 @@ impl Shared {
                 target_port: entry.0.port(),
                 next_ip: local.ip().to_string(), //our address since we only add connections through us to the update
                 next_port: local.port(),         //replace with const we set in main?
-                hop_count: if entry.1.hop_count == 32 {
-                    entry.1.hop_count
-                } else {
-                    entry.1.hop_count + 1
-                },
+                hop_count: entry.1.hop_count
             });
         }
         routing_entries
@@ -95,7 +91,11 @@ impl Shared {
                 // if in Routing Table
                 Some(old_entry) => {
                     // compare hop_count to target in Routing Table and in update
-                    let hop_count = new_entry.hop_count;
+                    let hop_count = if new_entry.hop_count == 32 {
+                        new_entry.hop_count
+                    } else {
+                        new_entry.hop_count + 1
+                    };
                     if hop_count <= old_entry.hop_count {
                         let next = (sender.ip().to_string() + ":" + &sender.port().to_string())
                             .parse::<SocketAddr>()
