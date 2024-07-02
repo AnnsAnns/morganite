@@ -15,6 +15,7 @@ pub enum Commands {
     Help,
     Unknown(String),
     SetOwnNick(String),
+    Broadcast(String)
 }
 
 #[derive(Debug, Clone)]

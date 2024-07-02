@@ -171,6 +171,43 @@ pub async fn handle_console(state: Arc<Mutex<Shared>>) -> Result<(), Box<dyn Err
                                         });
                                     }
                                 },
+                                Commands::Broadcast(message) => {
+                                    // Broadcast message to all clients
+                                    tracing::debug!("Broadcasting message: {}", message);
+
+                                    // Get the list of all entries in the routing table
+                                    let routing_table = {
+                                        let lock = state.lock().await;
+                                        lock.routing_table.clone()
+                                    };
+
+                                    // Send the message to all clients via next hop
+                                    for (addr, routing_table_entry) in routing_table.iter() {
+                                        // Get the channel to the next client/destination on the route
+                                        let target = if routing_table_entry.next == client_addr {
+                                            addr.clone()
+                                        } else {
+                                            routing_table_entry.next
+                                        };
+
+                                        let peer = {
+                                            let lock = state.lock().await;
+                                            match lock.peers.get(&target) {
+                                                Some(peer) => peer.clone(),
+                                                None => {
+                                                    tracing::error!("No channel to destination: {} available", target);
+                                                    continue;
+                                                }
+                                            }
+                                        };
+
+                                        // Send the message to the channel
+                                        if let Err(e) = peer.send(ChannelEvent::Message(message.clone(), addr.clone())) {
+                                            tracing::info!("Error sending your message. error = {:?}", e);
+                                        }
+                                    }
+                                },
+
                                 Commands::Message(addr, message) => {
                                     // Send message to specified client
                                     tracing::debug!("Sending message to: {}", addr);

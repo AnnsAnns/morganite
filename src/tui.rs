@@ -56,6 +56,7 @@ fn command_to_event(cmd: &str) -> Commands {
         "quit" => Commands::Quit,
         "help" => Commands::Help,
         "contacts" => Commands::Contacts,
+        "broadcast" => Commands::Broadcast(format!("@everyone: {}", words[1..].join(" "))),
         "setnick" => {
             if words.len() < 2 {
                 Commands::Unknown("Invalid number of arguments".to_string())
@@ -221,6 +222,9 @@ pub fn tui(receiver: Rx) -> Result<()> {
                                 Commands::Message(ref addr, ref message) => {
                                     tui.chat_room.push(format!("You => {}: {}", addr, message));
                                 }
+                                Commands::Broadcast(ref message) => {
+                                    tui.chat_room.push(format!("@everyone: {}", message));
+                                }
                                 _ => {}
                             }
 
@@ -267,6 +271,7 @@ fn help_cmd(tui: &mut TUI) {
         contacts => Retrieve routing table (Also in the right block)\n\
         msg <IP> <port> <message> => Send a message to somebody\n\
         connect <IP> <port> => Connect to a new peer\n\
+        broadcast <message> => Broadcast a message to all peers\n\
         setnick <name> => Set your own nickname\n\
         ↑ => Previous command\n\
         ↓ => Next command\n\
