@@ -87,6 +87,22 @@ impl Shared {
                 .parse::<SocketAddr>()
                 .unwrap();
 
+            let next_hop = (new_entry.next_ip.clone() + ":" + &new_entry.next_port.to_string())
+                .parse::<SocketAddr>()
+                .unwrap();
+
+            // Check whether we are the target or the next hop
+            if target == self.listener_addr.parse::<SocketAddr>().unwrap() || next_hop == self.listener_addr.parse::<SocketAddr>().unwrap(){
+                // Inform the console about the bad packet
+                let _ = self
+                    .console_input_sender
+                    .send(channel_events::ChannelEvent::LogToTerminal(
+                        "Received packet with own address as target".to_string(),
+                    ));
+                tracing::warn!("Received packet with own address as target");
+                continue;
+            }
+
             match self.routing_table.get(&target) {
                 // if in Routing Table
                 Some(old_entry) => {
